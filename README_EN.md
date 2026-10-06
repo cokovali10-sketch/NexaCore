@@ -160,7 +160,8 @@ Checks: heavy images, bloated JS bundles, legacy `three.js` script tags, competi
 - [x] **v0.6** — `Scene` × `GLCubeField`: `cube3d` entity in the builder, adaptive LOD for 3D, 2D fallback
 - [x] **v0.7** — real glTF rendering (`GLModelLayer`: smooth normals, tier-based LOD, async load, placeholder until ready)
 - [x] **v0.8** — profiler sees the GPU (`Scene.stats()`: 3D draw calls + triangles in HUD/overlay), `nexa init` scaffolds 2 canvases
-- [x] **v0.9** — `PostFx` over the scene (FBO + 1 fullscreen pass, auto-skip on weak), glTF via `StreamQueue` (near first) ← we are here
+- [x] **v0.9** — `PostFx` over the scene (FBO + 1 fullscreen pass, auto-skip on weak), glTF via `StreamQueue` (near first)
+- [x] **v1.0** — 3D voxels (`GLVoxelField`, additive, 0 CPU), in-shader cube shadows, `demo/showcase.html`, NPM packaging (`exports`+`files`, `npm publish` is yours), CDN lite chip ← we are here
 - [ ] **v1.0** — NPM release, CDN, NEXA-powered showcase
 - [ ] **v0.4** — `npx nexa init` + three.js project scanner + auto-migration onto the core
 - [ ] **v1.0** — NPM release, CDN, docs with GIFs, showcase of NEXA-powered sites

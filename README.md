@@ -4,7 +4,7 @@
 
 ### Чип против лагов для любых сайтов · Lag-killer chip for any website
 
-[![version](https://img.shields.io/badge/version-v0.2.0-22d3ee?style=for-the-badge)](./package.json)
+[![version](https://img.shields.io/badge/version-v1.0.0-22d3ee?style=for-the-badge)](./package.json)
 [![stack](https://img.shields.io/badge/WebGPU-first%20%7C%20WebGL2-fallback-8b5cf6?style=for-the-badge)](#)
 [![particles](https://img.shields.io/badge/50k_particles-1_draw_call-4ade80?style=for-the-badge)](#)
 [![fps](https://img.shields.io/badge/60_FPS-adaptive-22d3ee?style=for-the-badge)](#)
@@ -33,7 +33,7 @@ import { Nexa } from '@nexa/core';
 await Nexa.boot({ particles: true, profiler: true });
 ```
 
-[🚀 Демо: world.html](./demo/world.html) · [🔥 Демо: heavy.html](./demo/heavy.html) · [⚡ CLI-аудит](./cli/nexa.js)
+[🚀 Витрина: showcase.html](./demo/showcase.html) · [Демо: world.html](./demo/world.html) · [🔥 Демо: heavy.html](./demo/heavy.html) · [⚡ CLI-аудит](./cli/nexa.js)
 
 </div>
 
@@ -53,6 +53,7 @@ await Nexa.boot({ particles: true, profiler: true });
 | 🔁 | `Scheduler` — один rAF на весь сайт, бюджет 8мс | `Scheduler` — single rAF for the whole site, 8ms budget |
 | ✨ | `ParticleField` — 50k частиц за 1 draw call | `ParticleField` — 50k particles in 1 draw call |
 | 🧊 | `glTF + LOD` — модели с автодецимацией | `glTF + LOD` — auto-decimated models |
+| 🌌 | `Воксели 3D` + тени в шейдере, 0 CPU | `3D voxels` + in-shader shadows, 0 CPU |
 | 🦀 | `Rust → WASM` — физика x4–6 быстрее | `Rust → WASM` — 4–6x faster physics |
 | 📊 | `Profiler` — оверлей как в Unreal (stat fps) | `Profiler` — Unreal-style overlay (stat fps) |
 | 🛠 | `CLI` — `nexa optimize` как Lighthouse | `CLI` — `nexa optimize` like Lighthouse |

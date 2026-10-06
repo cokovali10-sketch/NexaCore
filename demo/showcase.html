@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXA Showcase — витрина ядра v1.0</title>
+<style>
+*{margin:0;box-sizing:border-box}body{background:#04060e;color:#e2e8f0;font-family:system-ui}
+#bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;padding:70px 20px 100px}
+h1{font-size:clamp(38px,7vw,80px);letter-spacing:-3px}h1 span{color:#22d3ee}
+.sub{opacity:.7;margin:12px 0 8px;font-size:17px}
+code{background:#0b1220;border:1px solid #22d3ee33;padding:2px 8px;border-radius:6px;font-size:13px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:28px}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:20px;backdrop-filter:blur(8px);text-decoration:none;color:inherit;display:block}
+.card:hover{border-color:#22d3ee88}.card b{font-size:18px}.card p{opacity:.65;font-size:13px;margin-top:6px}
+.feats{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-top:26px;font-size:13px}
+.feats div{background:rgba(34,211,238,.07);border:1px solid #22d3ee33;border-radius:10px;padding:10px 12px}
+.install{margin-top:26px;background:#020617;border:1px solid #22d3ee33;border-radius:12px;padding:16px;font:13px monospace;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="wrap">
+<h1>NEXA <span>SHOWCASE</span></h1>
+<p class="sub">Ядро v1.0: фон этой страницы — сам чип (<code>dist/nexa.js</code>, 1 строка). Дальше — 4 демо от простого к 3D.</p>
+<div class="grid">
+<a class="card" href="heavy.html"><b>🔥 Heavy</b><p>20k частиц + 500 карточек. База: adaptive держит FPS под стрессом x2.</p></a>
+<a class="card" href="world.html"><b>🌍 World</b><p>30k частиц + 120 кубов + 1000 карточек + профайлер. Мировой уровень.</p></a>
+<a class="card" href="builder.html"><b>🧩 Builder</b><p>Конструктор: кнопки +/− сущностей, темы, Export JSON сцены.</p></a>
+<a class="card" href="gl3d.html"><b>🧊 GL3D</b><p>Настоящий 3D: 120 кубов на GPU, 1 draw call, тени, параллакс.</p></a>
+</div>
+<div class="feats">
+<div>🧠 Adaptive — dynamic resolution как в AAA</div>
+<div>🔁 Scheduler — 1 rAF на весь сайт</div>
+<div>✨ 50k частиц — 1 draw call</div>
+<div>🧊 GLCubeField + воксели — 0 CPU в кадре</div>
+<div>📦 glTF + LOD + StreamQueue</div>
+<div>📊 Profiler — stat fps как в Unreal</div>
+<div>🛠 CLI — optimize / init / scan-three / migrate</div>
+<div>📜 RU/EN доки + smoke-тесты</div>
+</div>
+<div class="install">npm i @nexa/core   # полный конструктор: Scene, Design, GLCubeField, GLModelLayer
+
+&lt;script src="https://cdn.nexa/core.js" data-auto&gt;&lt;/script&gt;   # lite-чип: частицы + автовыбор качества
+
+npx nexa optimize ./my-site   # аудит 0–100
+npx nexa init ./my-site       # сайт с 2 canvas из коробки</div>
+</div>
+<script src="../dist/nexa.js"></script>
+<script>Nexa.boot({canvas:'#bg',hud:false,count:15000});</script>
+</body>
+</html>

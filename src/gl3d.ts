@@ -13,7 +13,7 @@ attribute vec3 a_v; attribute vec3 a_n;
 attribute vec3 a_p; attribute vec3 a_c;
 attribute vec2 a_rr; // x=base angle, y=speed
 uniform float u_time, u_aspect, u_mx, u_my;
-varying vec3 v_c; varying float v_d;
+varying vec3 v_c; varying float v_d; varying float v_h;
 void main(){
   float a = a_rr.x + u_time * a_rr.y;
   float ca = cos(a), sa = sin(a);
@@ -27,12 +27,15 @@ void main(){
   gl_Position = vec4(wp.x*f*u_aspect, wp.y*f, (ndc*2.0-1.0)*wp.z, wp.z);
   vec3 L = normalize(vec3(0.5, 0.8, 0.6));
   v_d = 0.35 + 0.65*max(dot(n, L), 0.0);
+  v_h = wp.y; // высота для земляной тени
   v_c = a_c;
 }`;
 
 const FS = `
-precision mediump float; varying vec3 v_c; varying float v_d;
-void main(){ gl_FragColor = vec4(v_c * v_d, 1.0); }`;
+precision mediump float; varying vec3 v_c; varying float v_d; varying float v_h;
+void main(){
+ float ao = 0.45 + 0.55*smoothstep(-1.3, 0.5, v_h); // тень у «земли», 0 ALU на CPU
+ gl_FragColor = vec4(v_c * v_d * ao, 1.0); }`;
 
 // куб: 36 вершин (12 треугольников), позиции + нормали
 function cubeGeo(): { v: Float32Array; n: Float32Array } {

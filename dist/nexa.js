@@ -1,4 +1,5 @@
-/* ⚡ NEXA Core v0.2 — CDN чип (≈9kb gzip target, zero-deps).
+/* ⚡ NEXA Core v1.0-lite — CDN чип (≈9kb gzip target, zero-deps). Легковесный фон-чип;
+   полный конструктор (Scene/GLCubeField/GLModelLayer) — в npm-пакете @nexa/core.
    Вставка на ЛЮБОЙ сайт:
    <script src="https://cdn.nexa/core.js" data-auto data-particles="20000"></script>
    или: Nexa.boot({particles:true, hud:true, profiler:true}) */
@@ -40,10 +41,10 @@ function boot(opts){
     gl.drawArrays(gl.POINTS,0,active);
     if(hud)hud.textContent=(1000/Math.max(ema,.01)).toFixed(0)+' FPS · '+dev.label+' · '+(active/1000).toFixed(1)+'k NEXA';
   }requestAnimationFrame(loop);
-  console.log('%c⚡ NEXA Core v0.2 CDN — '+dev.label,'color:#22d3ee;font-weight:bold');
+  console.log('%c⚡ NEXA Core v1.0-lite CDN — '+dev.label,'color:#22d3ee;font-weight:bold');
   return{device:dev};
 }
-window.Nexa={boot:boot,version:'0.2.0'};
+window.Nexa={boot:boot,version:'1.0.0-lite'};
 // data-auto: вставил скрипт — всё само
 if(document.currentScript&&document.currentScript.hasAttribute('data-auto')){
   var s=document.currentScript;

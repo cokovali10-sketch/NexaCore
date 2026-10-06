@@ -10,11 +10,12 @@ import { Adaptive } from './adaptive.js';
 import { getDevice } from './device.js';
 import { GLCubeField } from './gl3d.js';
 import { GLModelLayer } from './glmodel.js';
+import { GLVoxelField } from './glvoxels.js';
 import { Profiler } from './profiler.js';
 import { PostFx, PostFxOpts } from './postfx.js';
 import { StreamQueue } from './stream.js';
 
-export type EntityType = 'cubes' | 'spheres' | 'particles' | 'model' | 'text' | 'cube3d';
+export type EntityType = 'cubes' | 'spheres' | 'particles' | 'model' | 'text' | 'cube3d' | 'voxels';
 export interface Entity {
   id: string;
   type: EntityType;
@@ -47,6 +48,8 @@ export class Scene {
   private glCtx: WebGLRenderingContext | null = null;
   private fx: PostFx | null = null;
   private queue: StreamQueue | null = null;
+  private vox: GLVoxelField | null = null;
+  private voxBuilt = 0;
   private tierLabel = 'MID';
   private hud: HTMLElement | null = null;
   private frameNo = 0;
@@ -91,14 +94,14 @@ export class Scene {
       const x = Math.sin((full.seed ?? 7) * 999 + i * 78.233) * 43758.5453;
       return a + (x - Math.floor(x)) * (b - a);
     };
-    const n = full.count ?? (full.type === 'particles' ? 3000 : full.type === 'cube3d' ? 120 : 60);
+    const n = full.count ?? (full.type === 'particles' ? 3000 : full.type === 'cube3d' ? 120 : full.type === 'voxels' ? 4000 : 60);
     full.count = n;
     const items = [];
     for (let i = 0; i < n; i++) {
       items.push({ x: rnd(0, 1, i * 3), y: rnd(0, 1, i * 3 + 1), r: rnd(0, 6.28, i * 3 + 2), s: (full.size ?? 24) * rnd(0.4, 1.4, i), v: (full.speed ?? 0.2) * rnd(0.3, 1.5, i + n) });
     }
     this.lives.push({ ...full, items } as Live);
-    if (full.type === 'cube3d') this.ensureLayers();
+    if (full.type === 'cube3d' || full.type === 'voxels') this.ensureLayers();
     if (full.type === 'model' && full.url) {
       this.ensureLayers();
       this.models?.add(full.id, full.url, full.x ?? 0.5, full.y ?? 0.5, (full.size ?? 120) / 150);
@@ -107,21 +110,25 @@ export class Scene {
   }
 
   remove(id: string): void {
-    const was3d = this.lives.some((l) => l.id === id && l.type === 'cube3d');
+    const wasGL = this.lives.some((l) => l.id === id && (l.type === 'cube3d' || l.type === 'voxels'));
     const wasModel = this.lives.some((l) => l.id === id && l.type === 'model');
     this.lives = this.lives.filter((l) => l.id !== id);
     if (wasModel) this.models?.remove(id);
-    if (was3d) this.ensureLayers();
+    if (wasGL) this.ensureLayers();
   }
   clear(type?: EntityType): void {
     this.lives = type ? this.lives.filter((l) => l.type !== type) : [];
     if (!type || type === 'model') this.models?.clear();
-    if (!type || type === 'cube3d') this.ensureLayers();
+    if (!type || type === 'cube3d' || type === 'voxels') this.ensureLayers();
   }
 
   // GPU-слои. Буфер кубов строится с запасом; если сущностей стало больше — пересборка.
   private cube3dTotal(): number {
     return this.lives.reduce((a, l) => a + (l.type === 'cube3d' ? (l.count ?? 120) : 0), 0);
+  }
+
+  private voxTotal(): number {
+    return this.lives.reduce((a, l) => a + (l.type === 'voxels' ? (l.count ?? 4000) : 0), 0);
   }
 
   private ensureLayers(): void {
@@ -131,6 +138,11 @@ export class Scene {
     if (total > 0 && (!this.gl || total > this.glBuilt)) {
       this.glBuilt = Math.max(total, 360);
       this.gl = new GLCubeField({ canvas: this.opts.glCanvas, count: this.glBuilt });
+    }
+    const vtotal = this.voxTotal();
+    if (vtotal > 0 && (!this.vox || vtotal > this.voxBuilt)) {
+      this.voxBuilt = Math.max(vtotal, 8000);
+      this.vox = new GLVoxelField({ canvas: this.opts.glCanvas, count: this.voxBuilt });
     }
     const needModels = this.lives.some((l) => l.type === 'model' && l.url);
     if (needModels && !this.models) {
@@ -157,8 +169,8 @@ export class Scene {
     return {
       fps: this.adaptive.fps,
       level: this.adaptive.level,
-      draws: (this.gl?.lastDraws ?? 0) + (this.models?.lastDraws ?? 0),
-      tris: (this.gl?.lastTris ?? 0) + (this.models?.lastTris ?? 0),
+      draws: (this.gl?.lastDraws ?? 0) + (this.models?.lastDraws ?? 0) + (this.vox?.lastDraws ?? 0),
+      tris: (this.gl?.lastTris ?? 0) + (this.models?.lastTris ?? 0) + (this.vox?.lastTris ?? 0),
       entities: this.lives.length,
       modelsReady: this.models?.readyCount ?? 0,
       modelsPending: this.models?.pendingCount ?? 0,
@@ -173,7 +185,7 @@ export class Scene {
     const skip = q === 0 ? 3 : q === 1 ? 2 : 1; // LOD: рисуем каждый N-й
     for (const l of this.lives) {
       const col = l.color ?? '#22d3ee';
-      if (l.type === 'cube3d' && this.gl) continue; // их рисует GPU-слой ниже
+      if ((l.type === 'cube3d' && this.gl) || (l.type === 'voxels' && this.vox)) continue; // их рисует GPU-слой ниже
       if (l.type === 'cube3d' && !this.gl) {
         // fallback без glCanvas: 3D-кубы как вращающиеся 2D-квадраты
         ctx.fillStyle = col; ctx.font = '11px monospace';
@@ -220,6 +232,7 @@ export class Scene {
     // С postfx — всё уходит в FBO и выходит одним fullscreen-pass (+1 draw call).
     const total3d = this.cube3dTotal();
     const hasModels = (this.models?.models.length ?? 0) > 0;
+    const totalVox = this.voxTotal();
     const drawGL = () => {
       if (this.glCtx) {
         this.glCtx.clearColor(0, 0, 0, 0);
@@ -231,8 +244,13 @@ export class Scene {
         this.gl.render(performance.now());
       }
       if (this.models && hasModels) this.models.render(performance.now(), q, H / Math.max(W, 1));
+      if (this.vox && totalVox > 0) {
+        const frac = q === 3 ? 1 : q === 2 ? 0.6 : 0.3;
+        this.vox.setQuality(Math.max(1, Math.floor(Math.min(totalVox, this.voxBuilt) * frac)));
+        this.vox.render(performance.now(), this.opts.glCanvas!.height, H / Math.max(W, 1));
+      }
     };
-    if (total3d > 0 || hasModels) {
+    if (total3d > 0 || hasModels || totalVox > 0) {
       if (this.fx && this.opts.postfx) {
         this.fx.setEnabled(this.adaptive.state.postFX); // слабые — без поста (0 cost)
         this.fx.render(drawGL, this.opts.postfx, performance.now());

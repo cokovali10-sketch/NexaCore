@@ -1,9 +1,15 @@
 {
   "name": "@nexa/core",
-  "version": "0.9.0",
+  "version": "1.0.0",
   "description": "NEXA Core — чип против лагов мирового уровня. WebGPU, 50k частиц, glTF+LOD, WASM-физика, профайлер, CLI.",
   "type": "module",
   "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./adapters/react": "./adapters/react.ts",
+    "./adapters/vue": "./adapters/vue.ts"
+  },
+  "files": ["src", "adapters", "cli", "dist", "wasm", "README.md", "README_RU.md", "README_EN.md"],
   "bin": { "nexa": "./cli/nexa.js" },
   "scripts": {
     "demo": "npx vite serve demo --open",
