@@ -10,6 +10,7 @@ import { Adaptive } from './adaptive.js';
 import { getDevice } from './device.js';
 import { GLCubeField } from './gl3d.js';
 import { GLModelLayer } from './glmodel.js';
+import { Profiler } from './profiler.js';
 
 export type EntityType = 'cubes' | 'spheres' | 'particles' | 'model' | 'text' | 'cube3d';
 export interface Entity {
@@ -42,24 +43,35 @@ export class Scene {
   private glBuilt = 0;
   private models: GLModelLayer | null = null;
   private glCtx: WebGLRenderingContext | null = null;
+  private tierLabel = 'MID';
+  private hud: HTMLElement | null = null;
+  private frameNo = 0;
 
-  constructor(private canvas: HTMLCanvasElement, public opts: { hud?: boolean; glCanvas?: HTMLCanvasElement } = {}) {
+  constructor(private canvas: HTMLCanvasElement, public opts: { hud?: boolean; glCanvas?: HTMLCanvasElement; profiler?: Profiler } = {}) {
     canvas.style.pointerEvents = 'none';
     const g = canvas.getContext('2d');
     if (!g) throw new Error('Scene needs 2d context');
     this.ctx = g;
     this.fit(); addEventListener('resize', () => this.fit(), { passive: true });
+    this.tierLabel = getDevice().label;
+    if (opts.hud) {
+      this.hud = document.createElement('div');
+      this.hud.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:99999;font:12px/1.4 monospace;background:rgba(0,0,0,.6);color:#22d3ee;padding:6px 10px;border-radius:8px;border:1px solid #22d3ee44';
+      document.body.appendChild(this.hud);
+    }
+    let last = performance.now();
+    this.scheduler.add('nexa-scene', (dt) => {
+      const now = performance.now();
+      const dtMs = Math.min(now - last, 100); last = now;
+      this.adaptive.tick(dtMs);
+      this.time += dt;
+      this.frameNo++;
+      this.frame(Math.min(dt, 0.05), dtMs);
+    });
     addEventListener('pointermove', (e) => {
       const r = canvas.getBoundingClientRect();
       this.mx = (e.clientX - r.left) / r.width; this.my = (e.clientY - r.top) / r.height;
     }, { passive: true });
-    let last = performance.now();
-    this.scheduler.add('nexa-scene', (dt) => {
-      const now = performance.now();
-      this.adaptive.tick(Math.min(now - last, 100)); last = now;
-      this.time += dt;
-      this.frame(Math.min(dt, 0.05));
-    });
   }
 
   private fit(): void {
@@ -132,7 +144,20 @@ export class Scene {
     for (const e of JSON.parse(json)) this.add(e);
   }
 
-  private frame(dt: number): void {
+  // Сводная статистика кадра для HUD и Profiler (stat fps)
+  stats(): { fps: number; level: number; draws: number; tris: number; entities: number; modelsReady: number; modelsPending: number } {
+    return {
+      fps: this.adaptive.fps,
+      level: this.adaptive.level,
+      draws: (this.gl?.lastDraws ?? 0) + (this.models?.lastDraws ?? 0),
+      tris: (this.gl?.lastTris ?? 0) + (this.models?.lastTris ?? 0),
+      entities: this.lives.length,
+      modelsReady: this.models?.readyCount ?? 0,
+      modelsPending: this.models?.pendingCount ?? 0,
+    };
+  }
+
+  private frame(dt: number, dtMs: number): void {
     const { ctx, canvas } = this;
     const W = canvas.width, H = canvas.height;
     const q = this.adaptive.level; // 0..3 — чем ниже, тем грубее рисуем
@@ -197,5 +222,17 @@ export class Scene {
     }
     if (this.models && hasModels) this.models.render(performance.now(), q, H / Math.max(W, 1));
     // без glCanvas всё уже нарисовано выше как 2D (fallback), GPU-слой не нужен
+    if (this.frameNo % 10 === 0) {
+      const s = this.stats();
+      if (this.hud) {
+        this.hud.textContent = `${s.fps.toFixed(0)} FPS · ${this.tierLabel} · L${s.level} · draw:${s.draws} · tri:${(s.tris / 1000).toFixed(0)}k · ent:${s.entities}` +
+          (s.modelsPending > 0 ? ` · 3D грузятся:${s.modelsPending}` : '');
+      }
+      if (this.opts.profiler) {
+        this.opts.profiler.drawCalls = s.draws;
+        this.opts.profiler.triangles = s.tris;
+        this.opts.profiler.frame(dtMs, { api: this.glCtx ? 'webgl' : '2d', tier: this.tierLabel, level: s.level, active: this.lives.reduce((a, l) => a + (l.count ?? 0), 0) });
+      }
+    }
   }
 }

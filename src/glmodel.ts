@@ -60,6 +60,7 @@ export class GLModelLayer {
   private prog: WebGLProgram;
   private mgr = new ModelManager();
   models: PlacedModel[] = [];
+  lastDraws = 0; lastTris = 0; // статистика для Profiler (stat fps)
 
   constructor(private canvas: HTMLCanvasElement) {
     // тот же контекст, что у GLCubeField (один canvas — один контекст)
@@ -120,9 +121,12 @@ export class GLModelLayer {
 
   get readyCount(): number { return this.models.filter((m) => m.gpu[0]).length; }
 
+  get pendingCount(): number { return this.models.length - this.readyCount; }
+
   render(time: number, tier: number, aspect: number): void {
     const gl = this.gl;
     gl.useProgram(this.prog);
+    let draws = 0, tris = 0;
     const U = (n: string) => gl.getUniformLocation(this.prog, n);
     const uAng = U('u_ang'), uAsp = U('u_aspect'), uSx = U('u_sx'), uSy = U('u_sy'), uSz = U('u_sz'), uSc = U('u_sc');
     if (uAsp) gl.uniform1f(uAsp, aspect);
@@ -143,6 +147,8 @@ export class GLModelLayer {
       gl.enableVertexAttribArray(ln); gl.vertexAttribPointer(ln, 3, gl.FLOAT, false, 24, 12);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, g.ibo);
       gl.drawElements(gl.TRIANGLES, g.count, g.idxType, 0);
+      draws++; tris += g.count / 3;
     }
+    this.lastDraws = draws; this.lastTris = Math.floor(tris);
   }
 }

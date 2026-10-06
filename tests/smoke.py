@@ -52,6 +52,11 @@ for m in ["Profiler","StreamQueue","ModelManager","createPhysics","Scene","Desig
 sc = (ROOT/"src/scene.ts").read_text(encoding="utf-8")
 check("scene has cube3d", "cube3d" in sc and "GLCubeField" in sc and "syncGL" not in sc)
 check("scene has real models", "GLModelLayer" in sc and "modelReady" in sc)
+check("scene has stats+profiler", "stats()" in sc and "opts.profiler" in sc)
+check("gl3d reports stats", "lastTris" in (ROOT/"src/gl3d.ts").read_text(encoding="utf-8"))
+check("glmodel reports stats", "lastDraws" in (ROOT/"src/glmodel.ts").read_text(encoding="utf-8"))
+cli2 = (ROOT/"cli/nexa.js").read_text(encoding="utf-8")
+check("init dual-canvas template", 'id="gl"' in cli2 and "cube3d" in cli2)
 
 print("\nSMOKE: " + ("ALL PASS" if ok else "FAILURES PRESENT"))
 sys.exit(0 if ok else 1)

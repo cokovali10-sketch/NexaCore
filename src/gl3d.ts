@@ -54,6 +54,7 @@ function cubeGeo(): { v: Float32Array; n: Float32Array } {
 
 export class GLCubeField {
   activeCount: number;
+  lastDraws = 0; lastTris = 0; // статистика для Profiler (stat fps)
   private gl: WebGLRenderingContext;
   private prog: WebGLProgram;
   private mx = 0; private my = 0;
@@ -132,6 +133,9 @@ export class GLCubeField {
     set('u_my', this.my * 0.15);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, this.activeCount * 36);
+    this.lastDraws = 1; this.lastTris = this.activeCount * 12;
   }
 }

@@ -44,6 +44,7 @@ if (cmd === 'init') {
   if (!fs.existsSync(cfg)) {
     fs.writeFileSync(cfg, JSON.stringify({
       particles: 20000, profiler: true, hud: false,
+      canvases: { bg: '#bg', gl: '#gl' },
       assets: { concurrency: 'auto', lazyMargin: '600px' },
       textures: { prefer: 'ktx2', fallback: 'webp' },
     }, null, 2));
@@ -59,11 +60,30 @@ if (cmd === 'init') {
       console.log('  + чип вставлен в index.html');
     } else console.log('  = чип уже вставлен');
   } else {
-    fs.writeFileSync(idx, ['<!doctype html>', '<html><head><meta charset="utf-8">',
+    fs.writeFileSync(idx, ['<!doctype html>', '<html lang="ru"><head><meta charset="utf-8">',
       '<meta name="viewport" content="width=device-width,initial-scale=1">',
-      '<title>NEXA site</title></head>',
-      '<body><canvas id="bg"></canvas>', '  ' + tag, '</body></html>'].join('\n'));
-    console.log('  + создан index.html с чипом');
+      '<title>NEXA site</title>',
+      '<style>*{margin:0;box-sizing:border-box}body{background:#04060e;color:#e2e8f0;font-family:system-ui}',
+      '#gl{position:fixed;inset:0;width:100vw;height:100vh}#bg{position:fixed;inset:0;width:100vw;height:100vh}',
+      'main{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:80px 20px}</style></head>',
+      '<body>',
+      '<canvas id="gl"></canvas><!-- GPU-слой: cube3d + glTF -->',
+      '<canvas id="bg"></canvas><!-- 2D-слой: частицы, текст -->',
+      '<main><h1 style="font-size:clamp(36px,7vw,72px)">Мой сайт <span style="color:#22d3ee">на NEXA</span></h1>',
+      '<p style="opacity:.7">Чип уже работает (фон-частицы). Раскомментируй Scene ниже — и строй 3D прямо в ядре.</p></main>',
+      '<!-- Мгновенный старт без сборки: частицы + автовыбор качества -->',
+      '  ' + tag,
+      '<!-- Апгрейд до конструктора (нужен npm-пакет @nexa/core):',
+      '<script type="module">',
+      "import { Scene, Design } from '@nexa/core';",
+      'const scene = new Scene(document.getElementById("bg"), { glCanvas: document.getElementById("gl"), hud: true });',
+      "scene.add({ type: 'particles', count: 15000 });",
+      "scene.add({ type: 'cube3d', count: 120 });",
+      "scene.add({ type: 'model', url: 'hero.glb', x: 0.5, y: 0.5 });",
+      "new Design().apply('abyss');",
+      '</script>-->',
+      '</body></html>'].join('\n'));
+    console.log('  + создан index.html: 2 canvas (2D + GPU) + чип + Scene-заготовка');
   }
   console.log('\n⚡ nexa init готово: открой index.html и кайфуй.\n');
   process.exit(0);
