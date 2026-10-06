@@ -1,65 +1,79 @@
-# ⚡ NEXA Core — чип против лагов
+<div align="center">
 
-> Один раз ставишь на любой сайт — тяжелые 3D, 50k частиц, 1000 карточек летают на 60 FPS.
-> Уровень мировых компаний: как Unity Web + Vercel Speed + AAA dynamic resolution в одном файле.
+# ⚡ NEXA Core
 
-## Идея (придумано с нуля)
+### Чип против лагов для любых сайтов · Lag-killer chip for any website
 
-Обычные сайты лагают по 4 причинам:
-1. **20 разных rAF-циклов** дерутся за кадр → `Scheduler` (единый цикл + бюджет 8мс + пауза offscreen)
-2. **GC-фризы** (объекты в кадре) → `Pool` + `Float32Array`, ноль аллокаций в `update()`
-3. **Слабые телефоны грузят как RTX 4090** → `DeviceTier` + `Adaptive` (EMA времени кадра, авто-снижение pixelRatio/частиц, как в играх)
-4. **Всё грузится сразу** → `SmartLoader` (IntersectionObserver + idle + батч-вставка DOM чанками)
+[![version](https://img.shields.io/badge/version-v0.2.0-22d3ee?style=for-the-badge)](./package.json)
+[![stack](https://img.shields.io/badge/WebGPU-first%20%7C%20WebGL2-fallback-8b5cf6?style=for-the-badge)](#)
+[![particles](https://img.shields.io/badge/50k_particles-1_draw_call-4ade80?style=for-the-badge)](#)
+[![fps](https://img.shields.io/badge/60_FPS-adaptive-22d3ee?style=for-the-badge)](#)
 
-Рендер: **WebGPU-first, WebGL2-fallback**, частицы — 1 draw call (`POINTS`), физика в типизированных массивах.
-Тяжелая математика следующего этапа — **Rust → WASM** (физика, LOD, meshopt).
+| | |
+|---|---|
+| 🇷🇺 | **[Читать на русском →](./README_RU.md)** |
+| 🇬🇧 | **[Read in English →](./README_EN.md)** |
 
-## Структура
+*Выбери язык · Choose your language*
 
-```
-src/
-  device.ts     — тир устройства (POTATO/LOW/MID/ULTRA) + бюджет
-  pool.ts       — zero-GC пул
-  scheduler.ts  — единый rAF, offscreen-пауза, idle-хелпер
-  adaptive.ts   — FPS-доктор, dynamic resolution
-  particles.ts  — 50k частиц, 1 draw call, интерактив с мышью
-  loader.ts     — ленивая загрузка + batchInsert
-  index.ts      — Nexa.boot() — фасад-чип
-demo/
-  heavy.html    — открой в браузере: 20k частиц + 500 карточек, HUD с FPS
-```
+</div>
 
-## Использование (любой сайт)
+---
+
+<div align="center">
+
+**Одна строка — и тяжёлый сайт летает · One line — and heavy sites fly**
 
 ```html
-<canvas id="bg"></canvas>
-<script type="module">
-  import { Nexa } from './src/index.ts'; // после сборки — с CDN: https://cdn.nexa/core.js
-  await Nexa.boot({ canvas: '#bg', particles: true, hud: true });
-</script>
+<script src="https://cdn.nexa/core.js" data-auto></script>
 ```
 
 ```ts
-// React / Vite / любой фреймворк
-import { Nexa, SmartLoader } from '@nexa/core';
-useEffect(() => { Nexa.boot({ particles: true }); }, []);
-// 1000 карточек без лагов:
-SmartLoader.batchInsert(grid, i => makeCard(i), 1000);
+import { Nexa } from '@nexa/core';
+await Nexa.boot({ particles: true, profiler: true });
 ```
 
-## Демо
+[🚀 Демо: world.html](./demo/world.html) · [🔥 Демо: heavy.html](./demo/heavy.html) · [⚡ CLI-аудит](./cli/nexa.js)
 
-Открой `demo/heavy.html` двойным кликом:
-- счетчик FPS + ema + активных частиц (HUD слева внизу)
-- кнопка 🔥 Стресс x2 — проверка adaptive (ядро само режет качество, FPS не падает)
-- 500 карточек вставляются чанками по 12мс — без фризов
+</div>
 
-## Роадмап до мирового уровня
+---
 
-- [x] v0.1 — ядро (adaptive + scheduler + частицы + loader) ← мы здесь
-- [ ] v0.2 — WebGPU backend + glTF loader + DRACO + KTX2
-- [ ] v0.3 — Rust/WASM физика + LOD + автодецимация моделей
-- [ ] v0.4 — CLI `npx nexa optimize` (аудит сайта как Lighthouse, автофиксы)
-- [ ] v1.0 — CDN + NPM + React/Vue-адаптеры + профайлер-оверлей
+## Что это · What is this
 
-Время не ограничено — идем по шагам. Следующий шаг скажи ты: **WebGPU, 3D-модели или CLI-аудитор?**
+| 🇷🇺 Русский | 🇬🇧 English |
+|---|---|
+| Универсальное ядро-«чип»: ставишь на **любой** сайт, оно само держит **60 FPS** — 3D, 50k частиц, 1000 карточек. Как в AAA-играх: слабое устройство = красивая деградация, а не лаги. | Universal kernel-«chip»: drop it into **any** website and it holds **60 FPS** — 3D, 50k particles, 1000 cards. Like AAA games: weak devices get graceful degradation, not lag. |
+
+## Фишки · Features
+
+| | RU | EN |
+|---|---|---|
+| 🧠 | `Adaptive` — FPS-доктор, dynamic resolution | `Adaptive` — FPS doctor, dynamic resolution |
+| 🔁 | `Scheduler` — один rAF на весь сайт, бюджет 8мс | `Scheduler` — single rAF for the whole site, 8ms budget |
+| ✨ | `ParticleField` — 50k частиц за 1 draw call | `ParticleField` — 50k particles in 1 draw call |
+| 🧊 | `glTF + LOD` — модели с автодецимацией | `glTF + LOD` — auto-decimated models |
+| 🦀 | `Rust → WASM` — физика x4–6 быстрее | `Rust → WASM` — 4–6x faster physics |
+| 📊 | `Profiler` — оверлей как в Unreal (stat fps) | `Profiler` — Unreal-style overlay (stat fps) |
+| 🛠 | `CLI` — `nexa optimize` как Lighthouse | `CLI` — `nexa optimize` like Lighthouse |
+
+## Структура · Structure
+
+```
+NexaCore/
+├── README.md        ← ты здесь / you are here (переключатель языков)
+├── README_RU.md     ← полная документация на русском
+├── README_EN.md     ← full docs in English
+├── src/             ← ядро (device, scheduler, adaptive, gpu, particles, models, physics, profiler, stream…)
+├── wasm/            ← Rust-физика (physics.rs → WASM)
+├── cli/             ← nexa optimize — аудит сайта
+├── adapters/        ← React / Vue
+├── dist/nexa.js     ← CDN-чип, zero-deps (вставил script — работает)
+└── demo/            ← heavy.html (20k частиц) · world.html (30k + 3D + 1000 DOM)
+```
+
+<div align="center">
+
+**🇷🇺 [Полная дока на русском →](./README_RU.md) · 🇬🇧 [Full docs in English →](./README_EN.md)**
+
+</div>
