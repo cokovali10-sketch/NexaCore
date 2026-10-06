@@ -9,6 +9,7 @@ import { Scheduler } from './scheduler.js';
 import { Adaptive } from './adaptive.js';
 import { getDevice } from './device.js';
 import { GLCubeField } from './gl3d.js';
+import { GLModelLayer } from './glmodel.js';
 
 export type EntityType = 'cubes' | 'spheres' | 'particles' | 'model' | 'text' | 'cube3d';
 export interface Entity {
@@ -39,6 +40,8 @@ export class Scene {
   private time = 0;
   private gl: GLCubeField | null = null;
   private glBuilt = 0;
+  private models: GLModelLayer | null = null;
+  private glCtx: WebGLRenderingContext | null = null;
 
   constructor(private canvas: HTMLCanvasElement, public opts: { hud?: boolean; glCanvas?: HTMLCanvasElement } = {}) {
     canvas.style.pointerEvents = 'none';
@@ -79,32 +82,47 @@ export class Scene {
       items.push({ x: rnd(0, 1, i * 3), y: rnd(0, 1, i * 3 + 1), r: rnd(0, 6.28, i * 3 + 2), s: (full.size ?? 24) * rnd(0.4, 1.4, i), v: (full.speed ?? 0.2) * rnd(0.3, 1.5, i + n) });
     }
     this.lives.push({ ...full, items } as Live);
-    if (full.type === 'cube3d') this.syncGL();
+    if (full.type === 'cube3d') this.ensureLayers();
+    if (full.type === 'model' && full.url) {
+      this.ensureLayers();
+      this.models?.add(full.id, full.url, full.x ?? 0.5, full.y ?? 0.5, (full.size ?? 120) / 150);
+    }
     return full;
   }
 
   remove(id: string): void {
     const was3d = this.lives.some((l) => l.id === id && l.type === 'cube3d');
+    const wasModel = this.lives.some((l) => l.id === id && l.type === 'model');
     this.lives = this.lives.filter((l) => l.id !== id);
-    if (was3d) this.syncGL();
+    if (wasModel) this.models?.remove(id);
+    if (was3d) this.ensureLayers();
   }
   clear(type?: EntityType): void {
     this.lives = type ? this.lives.filter((l) => l.type !== type) : [];
-    if (!type || type === 'cube3d') this.syncGL();
+    if (!type || type === 'model') this.models?.clear();
+    if (!type || type === 'cube3d') this.ensureLayers();
   }
 
-  // cube3d → GPU-слой. Буфер строится с запасом; если сущностей стало больше — пересборка.
+  // GPU-слои. Буфер кубов строится с запасом; если сущностей стало больше — пересборка.
   private cube3dTotal(): number {
     return this.lives.reduce((a, l) => a + (l.type === 'cube3d' ? (l.count ?? 120) : 0), 0);
   }
 
-  private syncGL(): void {
+  private ensureLayers(): void {
+    if (!this.opts.glCanvas) return;
+    if (!this.glCtx) this.glCtx = this.opts.glCanvas.getContext('webgl') as WebGLRenderingContext | null;
     const total = this.cube3dTotal();
-    if (total === 0 || !this.opts.glCanvas) return;
-    if (!this.gl || total > this.glBuilt) {
+    if (total > 0 && (!this.gl || total > this.glBuilt)) {
       this.glBuilt = Math.max(total, 360);
       this.gl = new GLCubeField({ canvas: this.opts.glCanvas, count: this.glBuilt });
     }
+    const needModels = this.lives.some((l) => l.type === 'model' && l.url);
+    if (needModels && !this.models) this.models = new GLModelLayer(this.opts.glCanvas);
+  }
+
+  private modelReady(id: string): boolean {
+    const m = this.models?.models.find((x) => x.id === id);
+    return !!(m && m.gpu[0]);
   }
   get entities(): Entity[] { return this.lives.map(({ items: _items, ...e }) => e); }
 
@@ -134,7 +152,8 @@ export class Scene {
         continue;
       }
       if (l.type === 'model') {
-        // glTF-модель рисует ModelManager в WebGL-слое; здесь — плейсхолдер-бокс с подписью
+        if (this.modelReady(l.id)) continue; // меш уже в GPU — плейсхолдер не нужен
+        // ещё грузится (или нет glCanvas): плейсхолдер-бокс с подписью
         ctx.strokeStyle = col; ctx.lineWidth = 2;
         const bx = (l.x ?? 0.5) * W, by = (l.y ?? 0.5) * H, bs = (l.size ?? 120);
         ctx.strokeRect(bx - bs / 2, by - bs / 2, bs, bs);
@@ -163,12 +182,20 @@ export class Scene {
         }
       }
     }
-    // GPU-слой: все cube3d рисуются одним GLCubeField за 1 draw call
+    // GPU-слой: кубы — одним GLCubeField за 1 draw call, модели — слоем GLModelLayer.
+    // Чистим GL-canvas один раз на кадр, дальше слои компонуются по depth buffer.
     const total3d = this.cube3dTotal();
+    const hasModels = (this.models?.models.length ?? 0) > 0;
+    if (this.glCtx && (total3d > 0 || hasModels)) {
+      this.glCtx.clearColor(0, 0, 0, 0);
+      this.glCtx.clear(this.glCtx.COLOR_BUFFER_BIT | this.glCtx.DEPTH_BUFFER_BIT);
+    }
     if (this.gl && total3d > 0) {
       const frac = q === 3 ? 1 : q === 2 ? 0.65 : 0.35; // adaptive LOD для 3D
       this.gl.setQuality(Math.max(1, Math.floor(Math.min(total3d, this.glBuilt) * frac)));
       this.gl.render(performance.now());
-    // без glCanvas cube3d уже нарисованы выше как 2D (fallback), GPU-слой не нужен
+    }
+    if (this.models && hasModels) this.models.render(performance.now(), q, H / Math.max(W, 1));
+    // без glCanvas всё уже нарисовано выше как 2D (fallback), GPU-слой не нужен
   }
 }

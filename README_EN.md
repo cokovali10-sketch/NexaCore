@@ -58,7 +58,7 @@ const scene = new Scene(canvas, { glCanvas }); // second canvas for the GPU laye
 scene.add({ type: 'particles', count: 20000 });
 scene.add({ type: 'cube3d', count: 120 }); // real 3D: 1 draw call, auto LOD
 scene.add({ type: 'cubes', count: 120, color: '#a78bfa' });
-scene.add({ type: 'model', url: 'hero.glb', x: 0.5, y: 0.5 }); // glTF via ModelManager + LOD
+scene.add({ type: 'model', url: 'hero.glb', x: 0.5, y: 0.5 }); // real glTF mesh on GPU + LOD, async load
 scene.add({ type: 'text', content: 'NEXA ✦', x: 0.08, y: 0.2 });
 localStorage.nexa = scene.toJSON(); // save/load the whole scene in one line
 
@@ -157,7 +157,8 @@ Checks: heavy images, bloated JS bundles, legacy `three.js` script tags, competi
 - [x] **v0.2** — WebGPU backend, glTF+LOD, WASM physics, profiler, CLI, CDN, adapters ← we are here
 - [x] **v0.4** — Scene builder + Design themes, decimate/weld, Basis loader, three.js migration (`migrate`), demo builder
 - [x] **v0.5** — GPU-instanced 3D (`GLCubeField`: 1 draw call, shader-side rotation, 0 CPU per frame)
-- [x] **v0.6** — `Scene` × `GLCubeField`: `cube3d` entity in the builder, adaptive LOD for 3D, 2D fallback ← we are here
+- [x] **v0.6** — `Scene` × `GLCubeField`: `cube3d` entity in the builder, adaptive LOD for 3D, 2D fallback
+- [x] **v0.7** — real glTF rendering (`GLModelLayer`: smooth normals, tier-based LOD, async load, placeholder until ready) ← we are here
 - [ ] **v1.0** — NPM release, CDN, NEXA-powered showcase
 - [ ] **v0.4** — `npx nexa init` + three.js project scanner + auto-migration onto the core
 - [ ] **v1.0** — NPM release, CDN, docs with GIFs, showcase of NEXA-powered sites
