@@ -117,6 +117,8 @@ demo/world.html  — 30k частиц + 120 псевдо-3D кубов + 1000 к
 ```bash
 node cli/nexa.js optimize ./my-site      # отчёт: score, проблемы, как фиксить
 node cli/nexa.js optimize ./my-site --fix # авто: добавит loading="lazy" в <img>
+node cli/nexa.js init ./my-site           # скаффолд: nexa.config + чип в index.html
+node cli/nexa.js scan-three ./my-site     # разбор three.js: вес + план миграции на ядро
 ```
 
 Проверяет: тяжёлые картинки, раздутый JS-бандл, `three.js` через старый script-тег, воюющие `rAF`-циклы, отсутствие NEXA-чипа.
@@ -135,7 +137,8 @@ node cli/nexa.js optimize ./my-site --fix # авто: добавит loading="la
 
 - [x] **v0.1** — ядро: adaptive + scheduler + частицы + loader
 - [x] **v0.2** — WebGPU-бэкенд, glTF+LOD, WASM-физика, профайлер, CLI, CDN, адаптеры ← мы здесь
-- [ ] **v0.3** — настоящий ping-pong PostFX, KTX2/Basis, meshopt-децимация в WASM, воркер-физика
+- [x] **v0.3** — ping-pong PostFX, KTX2-детект, worker-физика, `nexa init`/`scan-three`, smoke-тест, бенч ← мы здесь
+- [ ] **v0.4** — Basis-декодер, meshopt-децимация в WASM, сканер three.js-проектов с автомиграцией
 - [ ] **v0.4** — `npx nexa init` + сканер three.js-проектов + автомиграция на ядро
 - [ ] **v1.0** — NPM-релиз, CDN, доки с GIF, витрина сайтов на NEXA
 

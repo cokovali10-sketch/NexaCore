@@ -117,6 +117,8 @@ Try it: hit "Stress" — FPS holds because the core sheds quality itself.
 ```bash
 node cli/nexa.js optimize ./my-site      # report: score, issues, fixes
 node cli/nexa.js optimize ./my-site --fix # auto: adds loading="lazy" to <img>
+node cli/nexa.js init ./my-site           # scaffold: nexa.config + chip into index.html
+node cli/nexa.js scan-three ./my-site     # three.js breakdown: weight + migration plan
 ```
 
 Checks: heavy images, bloated JS bundles, legacy `three.js` script tags, competing `rAF` loops, missing NEXA chip.
@@ -135,7 +137,8 @@ Checks: heavy images, bloated JS bundles, legacy `three.js` script tags, competi
 
 - [x] **v0.1** — core: adaptive + scheduler + particles + loader
 - [x] **v0.2** — WebGPU backend, glTF+LOD, WASM physics, profiler, CLI, CDN, adapters ← we are here
-- [ ] **v0.3** — real ping-pong PostFX, KTX2/Basis, meshopt decimation in WASM, worker physics
+- [x] **v0.3** — ping-pong PostFX, KTX2 detect, worker physics, `nexa init`/`scan-three`, smoke test, bench ← we are here
+- [ ] **v0.4** — Basis decoder, meshopt decimation in WASM, three.js scanner with auto-migration
 - [ ] **v0.4** — `npx nexa init` + three.js project scanner + auto-migration onto the core
 - [ ] **v1.0** — NPM release, CDN, docs with GIFs, showcase of NEXA-powered sites
 

@@ -1,6 +1,6 @@
 {
   "name": "@nexa/core",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "NEXA Core — чип против лагов мирового уровня. WebGPU, 50k частиц, glTF+LOD, WASM-физика, профайлер, CLI.",
   "type": "module",
   "main": "./src/index.ts",
@@ -8,7 +8,11 @@
   "scripts": {
     "demo": "npx vite serve demo --open",
     "build": "tsc --noEmit",
-    "audit": "node cli/nexa.js optimize ."
+    "audit": "node cli/nexa.js optimize .",
+    "init": "node cli/nexa.js init .",
+    "scan": "node cli/nexa.js scan-three .",
+    "test": "python tests/smoke.py",
+    "bench": "node bench/physics.bench.mjs"
   },
   "keywords": ["performance", "webgl", "webgpu", "particles", "3d", "60fps", "engine"]
 }
