@@ -9,9 +9,11 @@ const fs = require('fs');
 const path = require('path');
 
 const args = process.argv.slice(2);
-const cmd = args[0] === 'optimize' || args[0] === 'init' || args[0] === 'scan-three' ? args[0] : 'optimize';
-const root = (args[0] === 'optimize' || args[0] === 'init' || args[0] === 'scan-three' ? args[1] : args[0]) || '.';
+const KNOWN = ['optimize', 'init', 'scan-three', 'migrate'];
+const cmd = KNOWN.includes(args[0]) ? args[0] : 'optimize';
+const root = (KNOWN.includes(args[0]) ? args[1] : args[0]) || '.';
 const doFix = args.includes('--fix');
+const doApply = args.includes('--apply');
 
 if (args.includes('--help') || args.includes('-h')) {
   console.log([
@@ -19,6 +21,7 @@ if (args.includes('--help') || args.includes('-h')) {
     '  nexa optimize <dir> [--fix]  аудит сайта, score 0-100 + автофикс lazy',
     '  nexa init <dir>               создать nexa.config + вставить чип в index.html',
     '  nexa scan-three <dir>         найти three.js, оценить вес, дать план миграции',
+    '  nexa migrate <dir> [--apply] сгенерировать план миграции (с --apply вставит чип)',
   ].join('\n'));
   process.exit(0);
 }
@@ -91,6 +94,38 @@ if (cmd === 'scan-three') {
   console.log('  2. Points/Particles → ParticleField (1 draw call, WASM-физика)');
   console.log('  3. Модели → ModelManager: glTF + LOD0/1/2 по дистанции и тиру');
   console.log('  4. Текстуры → Atlas + ktx2.ts (ASTC/ETC2/S3TC → webp fallback)\n');
+  process.exit(0);
+}
+
+// ---------- migrate: план + опциональная вставка чипа ----------
+if (cmd === 'migrate') {
+  const files = walk(root);
+  const htmls = files.filter((f) => /\.html?$/i.test(f.p));
+  const js = files.filter((f) => /\.(js|ts|tsx|jsx)$/i.test(f.p));
+  let rafTotal = 0, threeFiles = 0;
+  for (const f of [...htmls, ...js]) {
+    try {
+      const t = fs.readFileSync(f.p, 'utf8');
+      rafTotal += (t.match(/requestAnimationFrame/g) || []).length;
+      if (/three|WebGLRenderer|THREE\./.test(t)) threeFiles++;
+    } catch {}
+  }
+  console.log(`\n⚡ NEXA migrate — ${root}\nrAF-циклов: ${rafTotal} · three.js-файлов: ${threeFiles}\n`);
+  console.log('План:');
+  console.log('  1. Цикл three.js → adoptLoop(scheduler, id, animate) (src/migrate.ts)');
+  console.log('  2. Points → ParticleField / Scene.add({type:\'particles\'})');
+  console.log('  3. Mesh → ModelManager + decimate() (LOD по тиру)');
+  console.log('  4. Текстуры → basis.ts (KTX2) с webp-fallback\n');
+  if (doApply) {
+    const idx = htmls.length ? htmls[0].p : path.join(root, 'index.html');
+    const tag = '<script src="https://cdn.nexa/core.js" data-auto></script>';
+    let t = fs.existsSync(idx) ? fs.readFileSync(idx, 'utf8') : '<!doctype html><html><body></body></html>';
+    if (!/cdn\.nexa\/core\.js/.test(t)) {
+      t = t.replace(/<\/body>/i, '  ' + tag + '\n</body>');
+      fs.writeFileSync(idx, t);
+      console.log(`  + чип вставлен: ${idx}\n`);
+    } else console.log('  = чип уже есть\n');
+  } else console.log('Запусти с --apply чтобы вставить чип автоматически.\n');
   process.exit(0);
 }
 

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXA Builder — вставил чип и строй 3D + дизайн</title>
+<style>
+*{margin:0;box-sizing:border-box}body{background:#04060e;color:#e2e8f0;font-family:system-ui}
+#cv{position:fixed;inset:0;width:100vw;height:100vh}
+.panel{position:fixed;left:12px;top:12px;z-index:5;width:300px;background:rgba(5,8,18,.88);border:1px solid #22d3ee55;border-radius:14px;padding:14px;font-size:13px}
+.panel h2{font-size:15px;margin-bottom:8px}.panel .row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+button{background:#22d3ee;border:0;padding:8px 12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:12px}
+button.ghost{background:transparent;border:1px solid #22d3ee55;color:#a5f3fc}
+select,input{background:#0b1220;color:#e2e8f0;border:1px solid #22d3ee33;border-radius:8px;padding:6px 8px;font-size:12px}
+#list{max-height:150px;overflow:auto;margin-top:8px;font:11px monospace;opacity:.85}
+#hud{position:fixed;left:12px;bottom:12px;z-index:5;font:12px monospace;background:rgba(0,0,0,.65);color:#22d3ee;padding:8px 12px;border-radius:10px}
+#out{position:fixed;right:12px;bottom:12px;z-index:5;width:280px;max-height:200px;overflow:auto;background:rgba(0,0,0,.7);border:1px solid #22d3ee33;border-radius:10px;padding:8px;font:10px monospace;display:none}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div class="panel">
+<h2>⚡ NEXA Builder <span style="opacity:.5">v0.4</span></h2>
+<div class="row">
+<button data-add="cubes">+ Кубов 60</button><button data-add="spheres">+ Сфер 60</button>
+<button data-add="particles">+ Частиц 3k</button><button data-add="text">+ Текст</button>
+</div>
+<div class="row">
+<select id="theme"><option value="abyss">abyss</option><option value="neon">neon</option><option value="paper">paper</option></select>
+<button class="ghost" id="exp">Export JSON</button><button class="ghost" id="clr">Clear</button>
+</div>
+<div class="row"><input id="modelUrl" placeholder="model.glb url" style="flex:1"><button data-add="model">+ 3D</button></div>
+<div id="list">сущностей: 0</div>
+</div>
+<div id="hud">…</div>
+<pre id="out"></pre>
+<script>
+// Мини-Scene (зеркало src/scene.ts — демо без сборки, двойной клик и работает)
+const cv=document.getElementById('cv'),g=cv.getContext('2d');
+let ents=[],seq=0,ema=16.6,last=performance.now(),mx=.5,my=.5;
+const THEMES={abyss:{bg:'#04060e',ink:'#e2e8f0',ac:'#22d3ee'},neon:{bg:'#0a0414',ink:'#f5f3ff',ac:'#a78bfa'},paper:{bg:'#fafaf9',ink:'#1c1917',ac:'#0d9488'}};
+function fit(){cv.width=innerWidth;cv.height=innerHeight;}fit();addEventListener('resize',fit);
+addEventListener('pointermove',e=>{mx=e.clientX/innerWidth;my=e.clientY/innerHeight;},{passive:true});
+function add(type){
+  const n=type==='particles'?3000:60,items=[];
+  for(let i=0;i<n;i++)items.push({x:Math.random(),y:Math.random(),r:Math.random()*6,s:8+Math.random()*30,v:.2+Math.random()});
+  ents.push({id:'e'+(++seq),type,items,color:document.getElementById('theme').value==='neon'?'#a78bfa':'#22d3ee',content:type==='text'?'NEXA ✦':undefined,url:type==='model'?(document.getElementById('modelUrl').value||'model.glb'):undefined});
+  upd();
+}
+function upd(){document.getElementById('list').innerHTML='сущностей: '+ents.length+'<br>'+ents.map(e=>`${e.id} ${e.type}${e.url?' '+e.url:''} <a href="#" data-del="${e.id}" style="color:#f87171">x</a>`).join('<br>');}
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add));
+document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.del;if(id){ents=ents.filter(x=>x.id!==id);upd();e.preventDefault();}});
+document.getElementById('clr').onclick=()=>{ents=[];upd();};
+document.getElementById('theme').onchange=e=>{const t=THEMES[e.target.value];document.body.style.background=t.bg;document.body.style.color=t.ink;ents.forEach(x=>x.color=t.ac);};
+document.getElementById('exp').onclick=()=>{const o=document.getElementById('out');o.style.display='block';o.textContent=JSON.stringify(ents.map(({items,...e})=>e),null,1);};
+add('cubes');add('particles');
+(function loop(t){requestAnimationFrame(loop);const dtms=Math.min(t-last,100);last=t;ema=ema*.95+dtms*.05;const dt=Math.min(dtms/1000,.05);
+const skip=ema>20?3:ema>17?2:1;g.clearRect(0,0,cv.width,cv.height);
+for(const l of ents){
+if(l.type==='text'){g.fillStyle=l.color;g.font='bold 64px system-ui';g.fillText(l.content,cv.width*.08,cv.height*.25);continue;}
+if(l.type==='model'){g.strokeStyle=l.color;g.strokeRect(cv.width/2-60,cv.height/2-60,120,120);g.fillStyle=l.color;g.font='12px monospace';g.fillText('3D:'+(l.url||'?'),cv.width/2-60,cv.height/2-70);continue;}
+for(let i=0;i<l.items.length;i+=skip){const it=l.items[i];it.r+=dt*it.v;
+if(l.type==='particles'){it.y-=dt*it.v*.15;if(it.y<0)it.y=1;}
+const X=it.x*cv.width,Y=it.y*cv.height;
+if(l.type==='spheres'){g.beginPath();g.arc(X,Y,it.s*.4,0,6.283);g.strokeStyle=l.color;g.globalAlpha=.7;g.stroke();g.globalAlpha=1;}
+else{g.save();g.translate(X,Y);g.rotate(it.r);g.strokeStyle=l.color;g.globalAlpha=l.type==='particles'?.5:.8;const s=l.type==='particles'?it.s*.25:it.s;g.strokeRect(-s/2,-s/2,s,s);g.restore();g.globalAlpha=1;}}}
+document.getElementById('hud').textContent=`${(1000/Math.max(ema,.01)).toFixed(0)} FPS · ${ents.length} сущностей · NEXA Builder`;
+})(performance.now());
+</script>
+</body>
+</html>

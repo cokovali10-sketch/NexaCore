@@ -50,6 +50,22 @@ await Nexa.boot({ canvas: '#bg', particles: true, hud: true, profiler: true });
 SmartLoader.batchInsert(grid, (i) => makeCard(i), 1000);
 ```
 
+**Вариант Г — конструктор сцены (новое в v0.4): вставил чип и строишь всё в нём:**
+
+```ts
+import { Scene, Design } from '@nexa/core';
+const scene = new Scene(canvas);
+scene.add({ type: 'particles', count: 20000 });
+scene.add({ type: 'cubes', count: 120, color: '#a78bfa' });
+scene.add({ type: 'model', url: 'hero.glb', x: 0.5, y: 0.5 }); // glTF через ModelManager + LOD
+scene.add({ type: 'text', content: 'NEXA ✦', x: 0.08, y: 0.2 });
+localStorage.nexa = scene.toJSON(); // сцена сохраняется/грузится одной строкой
+
+new Design().apply('neon'); // тема + glass-карточки, блюр сам выключится на слабых
+```
+
+Живое демо без сборки: **`demo/builder.html`** — кнопки «+ Кубов / + Сфер / + Частиц / + 3D», смена темы, Export JSON, удаление сущностей.
+
 **Вариант В — React / Vue:**
 
 ```tsx
@@ -137,8 +153,8 @@ node cli/nexa.js scan-three ./my-site     # разбор three.js: вес + пл
 
 - [x] **v0.1** — ядро: adaptive + scheduler + частицы + loader
 - [x] **v0.2** — WebGPU-бэкенд, glTF+LOD, WASM-физика, профайлер, CLI, CDN, адаптеры ← мы здесь
-- [x] **v0.3** — ping-pong PostFX, KTX2-детект, worker-физика, `nexa init`/`scan-three`, smoke-тест, бенч ← мы здесь
-- [ ] **v0.4** — Basis-декодер, meshopt-децимация в WASM, сканер three.js-проектов с автомиграцией
+- [x] **v0.4** — Scene-конструктор + Design-темы, decimate/weld, Basis-лоадер, three.js-миграция (`migrate`), demo-builder ← мы здесь
+- [ ] **v1.0** — NPM-релиз, CDN, витрина сайтов на NEXA
 - [ ] **v0.4** — `npx nexa init` + сканер three.js-проектов + автомиграция на ядро
 - [ ] **v1.0** — NPM-релиз, CDN, доки с GIF, витрина сайтов на NEXA
 

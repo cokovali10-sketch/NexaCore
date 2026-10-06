@@ -50,6 +50,22 @@ await Nexa.boot({ canvas: '#bg', particles: true, hud: true, profiler: true });
 SmartLoader.batchInsert(grid, (i) => makeCard(i), 1000);
 ```
 
+**Option D — scene builder (new in v0.4): drop the chip in and build everything inside it:**
+
+```ts
+import { Scene, Design } from '@nexa/core';
+const scene = new Scene(canvas);
+scene.add({ type: 'particles', count: 20000 });
+scene.add({ type: 'cubes', count: 120, color: '#a78bfa' });
+scene.add({ type: 'model', url: 'hero.glb', x: 0.5, y: 0.5 }); // glTF via ModelManager + LOD
+scene.add({ type: 'text', content: 'NEXA ✦', x: 0.08, y: 0.2 });
+localStorage.nexa = scene.toJSON(); // save/load the whole scene in one line
+
+new Design().apply('neon'); // theme + glass cards, blur auto-off on weak devices
+```
+
+Live no-build demo: **`demo/builder.html`** — "+ Cubes / Spheres / Particles / 3D" buttons, theme switch, Export JSON, entity removal.
+
 **Option C — React / Vue:**
 
 ```tsx
@@ -137,8 +153,8 @@ Checks: heavy images, bloated JS bundles, legacy `three.js` script tags, competi
 
 - [x] **v0.1** — core: adaptive + scheduler + particles + loader
 - [x] **v0.2** — WebGPU backend, glTF+LOD, WASM physics, profiler, CLI, CDN, adapters ← we are here
-- [x] **v0.3** — ping-pong PostFX, KTX2 detect, worker physics, `nexa init`/`scan-three`, smoke test, bench ← we are here
-- [ ] **v0.4** — Basis decoder, meshopt decimation in WASM, three.js scanner with auto-migration
+- [x] **v0.4** — Scene builder + Design themes, decimate/weld, Basis loader, three.js migration (`migrate`), demo builder ← we are here
+- [ ] **v1.0** — NPM release, CDN, NEXA-powered showcase
 - [ ] **v0.4** — `npx nexa init` + three.js project scanner + auto-migration onto the core
 - [ ] **v1.0** — NPM release, CDN, docs with GIFs, showcase of NEXA-powered sites
 

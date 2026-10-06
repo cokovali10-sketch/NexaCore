@@ -1,6 +1,6 @@
 {
   "name": "@nexa/core",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "NEXA Core — чип против лагов мирового уровня. WebGPU, 50k частиц, glTF+LOD, WASM-физика, профайлер, CLI.",
   "type": "module",
   "main": "./src/index.ts",
@@ -11,6 +11,7 @@
     "audit": "node cli/nexa.js optimize .",
     "init": "node cli/nexa.js init .",
     "scan": "node cli/nexa.js scan-three .",
+    "migrate": "node cli/nexa.js migrate .",
     "test": "python tests/smoke.py",
     "bench": "node bench/physics.bench.mjs"
   },
