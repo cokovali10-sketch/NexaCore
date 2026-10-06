@@ -54,8 +54,9 @@ SmartLoader.batchInsert(grid, (i) => makeCard(i), 1000);
 
 ```ts
 import { Scene, Design } from '@nexa/core';
-const scene = new Scene(canvas);
+const scene = new Scene(canvas, { glCanvas }); // второй canvas под GPU-слой
 scene.add({ type: 'particles', count: 20000 });
+scene.add({ type: 'cube3d', count: 120 }); // настоящий 3D: 1 draw call, LOD сам
 scene.add({ type: 'cubes', count: 120, color: '#a78bfa' });
 scene.add({ type: 'model', url: 'hero.glb', x: 0.5, y: 0.5 }); // glTF через ModelManager + LOD
 scene.add({ type: 'text', content: 'NEXA ✦', x: 0.08, y: 0.2 });
@@ -155,7 +156,8 @@ node cli/nexa.js scan-three ./my-site     # разбор three.js: вес + пл
 - [x] **v0.1** — ядро: adaptive + scheduler + частицы + loader
 - [x] **v0.2** — WebGPU-бэкенд, glTF+LOD, WASM-физика, профайлер, CLI, CDN, адаптеры ← мы здесь
 - [x] **v0.4** — Scene-конструктор + Design-темы, decimate/weld, Basis-лоадер, three.js-миграция (`migrate`), demo-builder
-- [x] **v0.5** — GPU-инстансинг 3D (`GLCubeField`: 1 draw call, угол в шейдере, 0 CPU в кадре) ← мы здесь
+- [x] **v0.5** — GPU-инстансинг 3D (`GLCubeField`: 1 draw call, угол в шейдере, 0 CPU в кадре)
+- [x] **v0.6** — `Scene` + `GLCubeField`: сущность `cube3d` в конструкторе, adaptive LOD для 3D, 2D-fallback ← мы здесь
 - [ ] **v1.0** — NPM-релиз, CDN, витрина сайтов на NEXA
 - [ ] **v0.4** — `npx nexa init` + сканер three.js-проектов + автомиграция на ядро
 - [ ] **v1.0** — NPM-релиз, CDN, доки с GIF, витрина сайтов на NEXA

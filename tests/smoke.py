@@ -49,6 +49,8 @@ check("ktx2 detect", "astc" in ktx and "etc2" in ktx and "s3tc" in ktx)
 idx = (ROOT/"src/index.ts").read_text(encoding="utf-8")
 for m in ["Profiler","StreamQueue","ModelManager","createPhysics","Scene","Design","planMigration","decimate","createWorkerPhysics","GLCubeField"]:
     check(f"index exports {m}", m in idx)
+sc = (ROOT/"src/scene.ts").read_text(encoding="utf-8")
+check("scene has cube3d", "cube3d" in sc and "GLCubeField" in sc and "syncGL" in sc)
 
 print("\nSMOKE: " + ("ALL PASS" if ok else "FAILURES PRESENT"))
 sys.exit(0 if ok else 1)

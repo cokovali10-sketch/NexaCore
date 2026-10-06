@@ -1,15 +1,16 @@
 // NEXA Core — scene.ts: универсальный конструктор сцены.
 // Вставил чип → строишь 3D и дизайн прямо в нём, без three.js:
-//   const s = new Scene(canvas); s.add({type:'cubes', count:120}); s.add({type:'particles', count:20000});
-// Сущности: cubes | spheres | model | particles | text. Всё — 1 rAF через Scheduler,
-// LOD и качество — через Adaptive. Рендер 2D-инстансинг (ноль зависимостей),
-// 3D-модели (glTF) подхватывает ModelManager.
+//   const s = new Scene(canvas, { glCanvas }); s.add({type:'cube3d', count:120});
+// Сущности: cubes | spheres | particles | model | text | cube3d. Всё — 1 rAF через Scheduler,
+// LOD и качество — через Adaptive. 2D — инстансинг на canvas, cube3d — GPU (GLCubeField,
+// 1 draw call, угол в шейдере). Без glCanvas cube3d рисуется как 2D-плейсхолдер.
 
 import { Scheduler } from './scheduler.js';
 import { Adaptive } from './adaptive.js';
 import { getDevice } from './device.js';
+import { GLCubeField } from './gl3d.js';
 
-export type EntityType = 'cubes' | 'spheres' | 'particles' | 'model' | 'text';
+export type EntityType = 'cubes' | 'spheres' | 'particles' | 'model' | 'text' | 'cube3d';
 export interface Entity {
   id: string;
   type: EntityType;
@@ -36,8 +37,10 @@ export class Scene {
   readonly adaptive = new Adaptive(getDevice().tier);
   private mx = 0.5; private my = 0.5;
   private time = 0;
+  private gl: GLCubeField | null = null;
+  private glBuilt = 0;
 
-  constructor(private canvas: HTMLCanvasElement, public opts: { hud?: boolean } = {}) {
+  constructor(private canvas: HTMLCanvasElement, public opts: { hud?: boolean; glCanvas?: HTMLCanvasElement } = {}) {
     canvas.style.pointerEvents = 'none';
     const g = canvas.getContext('2d');
     if (!g) throw new Error('Scene needs 2d context');
@@ -69,17 +72,40 @@ export class Scene {
       const x = Math.sin((full.seed ?? 7) * 999 + i * 78.233) * 43758.5453;
       return a + (x - Math.floor(x)) * (b - a);
     };
-    const n = full.count ?? (full.type === 'particles' ? 3000 : 60);
+    const n = full.count ?? (full.type === 'particles' ? 3000 : full.type === 'cube3d' ? 120 : 60);
+    full.count = n;
     const items = [];
     for (let i = 0; i < n; i++) {
       items.push({ x: rnd(0, 1, i * 3), y: rnd(0, 1, i * 3 + 1), r: rnd(0, 6.28, i * 3 + 2), s: (full.size ?? 24) * rnd(0.4, 1.4, i), v: (full.speed ?? 0.2) * rnd(0.3, 1.5, i + n) });
     }
     this.lives.push({ ...full, items } as Live);
+    if (full.type === 'cube3d') this.syncGL();
     return full;
   }
 
-  remove(id: string): void { this.lives = this.lives.filter((l) => l.id !== id); }
-  clear(type?: EntityType): void { this.lives = type ? this.lives.filter((l) => l.type !== type) : []; }
+  remove(id: string): void {
+    const was3d = this.lives.some((l) => l.id === id && l.type === 'cube3d');
+    this.lives = this.lives.filter((l) => l.id !== id);
+    if (was3d) this.syncGL();
+  }
+  clear(type?: EntityType): void {
+    this.lives = type ? this.lives.filter((l) => l.type !== type) : [];
+    if (!type || type === 'cube3d') this.syncGL();
+  }
+
+  // cube3d → GPU-слой. Буфер строится с запасом; если сущностей стало больше — пересборка.
+  private cube3dTotal(): number {
+    return this.lives.reduce((a, l) => a + (l.type === 'cube3d' ? (l.count ?? 120) : 0), 0);
+  }
+
+  private syncGL(): void {
+    const total = this.cube3dTotal();
+    if (total === 0 || !this.opts.glCanvas) return;
+    if (!this.gl || total > this.glBuilt) {
+      this.glBuilt = Math.max(total, 360);
+      this.gl = new GLCubeField({ canvas: this.opts.glCanvas, count: this.glBuilt });
+    }
+  }
   get entities(): Entity[] { return this.lives.map(({ items: _items, ...e }) => e); }
 
   toJSON(): string { return JSON.stringify(this.entities, null, 2); }
@@ -96,6 +122,12 @@ export class Scene {
     const skip = q === 0 ? 3 : q === 1 ? 2 : 1; // LOD: рисуем каждый N-й
     for (const l of this.lives) {
       const col = l.color ?? '#22d3ee';
+      if (l.type === 'cube3d' && this.gl) continue; // их рисует GPU-слой ниже
+      if (l.type === 'cube3d' && !this.gl) {
+        // fallback без glCanvas: 3D-кубы как вращающиеся 2D-квадраты
+        ctx.fillStyle = col; ctx.font = '11px monospace';
+        ctx.fillText(`cube3d×${l.count ?? 120} (дай glCanvas для GPU)`, 12, H - 12);
+      }
       if (l.type === 'text' && l.content) {
         ctx.fillStyle = col; ctx.font = `${Math.floor(H * 0.06)}px system-ui`;
         ctx.fillText(l.content, (l.x ?? 0.08) * W, (l.y ?? 0.2) * H);
@@ -131,5 +163,12 @@ export class Scene {
         }
       }
     }
+    // GPU-слой: все cube3d рисуются одним GLCubeField за 1 draw call
+    const total3d = this.cube3dTotal();
+    if (this.gl && total3d > 0) {
+      const frac = q === 3 ? 1 : q === 2 ? 0.65 : 0.35; // adaptive LOD для 3D
+      this.gl.setQuality(Math.max(1, Math.floor(Math.min(total3d, this.glBuilt) * frac)));
+      this.gl.render(performance.now());
+    // без glCanvas cube3d уже нарисованы выше как 2D (fallback), GPU-слой не нужен
   }
 }
