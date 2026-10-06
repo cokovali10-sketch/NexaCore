@@ -2,6 +2,8 @@
 // GL_POINTS с перспективой: размер и яркость зависят от глубины, вращение орбит —
 // в шейдере по u_time. 1 draw call, 0 CPU в кадре. Аддитивное смешивание поверх кубов.
 
+import { compileProg, attrBuf, srand, palette, flat, trackPointer } from './gl.js';
+
 export interface VoxelOpts {
   canvas: HTMLCanvasElement;
   count?: number;
@@ -46,42 +48,14 @@ export class GLVoxelField {
     this.gl = gl;
     const count = opts.count ?? 4000;
     this.activeCount = count;
-    const mk = (t: number, s: string) => { const o = gl.createShader(t)!; gl.shaderSource(o, s); gl.compileShader(o); return o; };
-    const prog = gl.createProgram()!;
-    gl.attachShader(prog, mk(gl.VERTEX_SHADER, VS));
-    gl.attachShader(prog, mk(gl.FRAGMENT_SHADER, FS));
-    gl.linkProgram(prog);
-    this.prog = prog;
-    gl.useProgram(prog);
-    const rnd = (i: number, s: number) => {
-      const x = Math.sin(i * 91.17 + s * 12.9898) * 43758.5453;
-      return x - Math.floor(x);
-    };
-    const per = (fn: (i: number) => number[], size: number) => {
-      const arr = new Float32Array(count * size);
-      for (let i = 0; i < count; i++) {
-        const c = fn(i);
-        for (let j = 0; j < size; j++) arr[i * size + j] = c[j];
-      }
-      return arr;
-    };
-    const buf = (loc: string, size: number, data: Float32Array) => {
-      const l = gl.getAttribLocation(prog, loc);
-      const b = gl.createBuffer()!;
-      gl.bindBuffer(gl.ARRAY_BUFFER, b);
-      gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-      gl.enableVertexAttribArray(l);
-      gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0);
-    };
-    buf('a_p', 3, per((i) => [rnd(i, 1) * 3 - 1.5, rnd(i, 2) * 2 - 1, 2.5 + rnd(i, 3) * 5], 3));
-    buf('a_c', 3, per((i) => { const t = rnd(i, 4); return [0.3 + t * 0.7, 0.6 + rnd(i, 5) * 0.4, 1.0]; }, 3));
-    buf('a_sd', 2, per((i) => [rnd(i, 6) * 6.28, 0.05 + rnd(i, 7) * 0.25], 2));
-    buf('a_s', 1, per((i) => [0.6 + rnd(i, 8) * 2.4], 1));
-    addEventListener('pointermove', (e) => {
-      const r = opts.canvas.getBoundingClientRect();
-      this.mx = ((e.clientX - r.left) / r.width) * 2 - 1;
-      this.my = -(((e.clientY - r.top) / r.height) * 2 - 1);
-    }, { passive: true });
+    this.prog = compileProg(gl, VS, FS);
+    gl.useProgram(this.prog);
+    const B = (loc: string, size: number, data: Float32Array) => attrBuf(gl, this.prog, loc, size, data);
+    B('a_p', 3, flat(count, 3, (i) => [srand(i, 1) * 3 - 1.5, srand(i, 2) * 2 - 1, 2.5 + srand(i, 3) * 5]));
+    B('a_c', 3, flat(count, 3, palette));
+    B('a_sd', 2, flat(count, 2, (i) => [srand(i, 6) * 6.28, 0.05 + srand(i, 7) * 0.25]));
+    B('a_s', 1, flat(count, 1, (i) => [0.6 + srand(i, 8) * 2.4]));
+    trackPointer(opts.canvas, (x, y) => { this.mx = x; this.my = y; });
   }
 
   setQuality(n: number): void {

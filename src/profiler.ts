@@ -4,7 +4,7 @@
 export class Profiler {
   private el: HTMLElement; private cv: HTMLCanvasElement; private g: CanvasRenderingContext2D;
   private hist = new Float32Array(120); private hi = 0;
-  private frames = 0; private lastT = performance.now();
+  private frames = 0;
   drawCalls = 0; triangles = 0;
 
   constructor() {

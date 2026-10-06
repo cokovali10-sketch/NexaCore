@@ -3,6 +3,8 @@
 // CPU в кадре вообще ничего не делает — только adaptive режет activeCount.
 // Параллакс от мыши, depth buffer для правильного перекрытия, LOD через skip.
 
+import { compileProg, attrBuf, srand, palette, instanced, trackPointer } from './gl.js';
+
 export interface CubeOpts {
   canvas: HTMLCanvasElement;
   count?: number;
@@ -68,47 +70,19 @@ export class GLCubeField {
     this.gl = gl;
     const count = opts.count ?? 120;
     this.activeCount = count;
-    const mk = (t: number, s: string) => { const o = gl.createShader(t)!; gl.shaderSource(o, s); gl.compileShader(o); return o; };
-    this.prog = gl.createProgram()!;
-    gl.attachShader(this.prog, mk(gl.VERTEX_SHADER, VS));
-    gl.attachShader(this.prog, mk(gl.FRAGMENT_SHADER, FS));
-    gl.linkProgram(this.prog);
+    this.prog = compileProg(gl, VS, FS);
     gl.useProgram(this.prog);
     gl.enable(gl.DEPTH_TEST);
 
     const { v, n } = cubeGeo();
-    const per = (fn: (i: number) => number[], size: number) => {
-      const arr = new Float32Array(36 * count * size);
-      for (let inst = 0; inst < count; inst++)
-        for (let k = 0; k < 36; k++) {
-          const c = fn(inst);
-          for (let j = 0; j < size; j++) arr[(inst * 36 + k) * size + j] = c[j];
-        }
-      return arr;
-    };
-    const rnd = (i: number, s: number) => {
-      const x = Math.sin(i * 78.233 + s * 12.9898) * 43758.5453;
-      return x - Math.floor(x);
-    };
-    const buf = (loc: string, size: number, data: Float32Array, dynamic = false) => {
-      const l = gl.getAttribLocation(this.prog, loc);
-      const b = gl.createBuffer()!;
-      gl.bindBuffer(gl.ARRAY_BUFFER, b);
-      gl.bufferData(gl.ARRAY_BUFFER, data, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
-      gl.enableVertexAttribArray(l);
-      gl.vertexAttribPointer(l, size, gl.FLOAT, false, 0, 0);
-    };
-    buf('a_v', 3, v);
-    buf('a_n', 3, n);
-    buf('a_p', 3, per((i) => [rnd(i, 1) * 2 - 1, rnd(i, 2) * 2 - 1, 2.5 + rnd(i, 3) * 5], 3));
-    buf('a_c', 3, per((i) => { const t = rnd(i, 4); return [0.3 + t * 0.7, 0.6 + rnd(i, 5) * 0.4, 1.0]; }, 3));
-    buf('a_rr', 2, per((i) => [rnd(i, 6) * 6.28, 0.2 + rnd(i, 7) * 0.8], 2));
+    const B = (loc: string, size: number, data: Float32Array) => attrBuf(gl, this.prog, loc, size, data);
+    B('a_v', 3, v);
+    B('a_n', 3, n);
+    B('a_p', 3, instanced(count, 36, 3, (i) => [srand(i, 1) * 2 - 1, srand(i, 2) * 2 - 1, 2.5 + srand(i, 3) * 5]));
+    B('a_c', 3, instanced(count, 36, 3, palette));
+    B('a_rr', 2, instanced(count, 36, 2, (i) => [srand(i, 6) * 6.28, 0.2 + srand(i, 7) * 0.8]));
 
-    addEventListener('pointermove', (e) => {
-      const r = opts.canvas.getBoundingClientRect();
-      this.mx = ((e.clientX - r.left) / r.width) * 2 - 1;
-      this.my = -(((e.clientY - r.top) / r.height) * 2 - 1);
-    }, { passive: true });
+    trackPointer(opts.canvas, (x, y) => { this.mx = x; this.my = y; });
     this.fit();
     addEventListener('resize', () => this.fit(), { passive: true });
   }
@@ -134,8 +108,6 @@ export class GLCubeField {
     set('u_aspect', this.opts.canvas.height / Math.max(this.opts.canvas.width, 1));
     set('u_mx', this.mx * 0.15);
     set('u_my', this.my * 0.15);
-    gl.clearColor(0, 0, 0, 0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLES, 0, this.activeCount * 36);

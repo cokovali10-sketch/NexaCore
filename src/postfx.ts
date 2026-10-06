@@ -4,6 +4,8 @@
 
 export interface PostFxOpts { vignette?: boolean; bloom?: boolean; grain?: boolean; }
 
+import { compileProg, attrBuf } from './gl.js';
+
 const VS = `attribute vec2 p;varying vec2 uv;void main(){uv=p*0.5+0.5;gl_Position=vec4(p,0.,1.);}`;
 const FS = `
 precision mediump float;varying vec2 uv;uniform sampler2D t;uniform float onV,onB,onG,time;
@@ -27,13 +29,8 @@ export class PostFx {
   constructor(private canvas: HTMLCanvasElement, gl: WebGLRenderingContext | WebGL2RenderingContext | null) {
     if (!gl) throw new Error('PostFx needs WebGL');
     this.gl = gl;
-    const mk = (t: number, s: string) => { const o = gl.createShader(t)!; gl.shaderSource(o, s); gl.compileShader(o); return o; };
-    this.prog = gl.createProgram()!;
-    gl.attachShader(this.prog, mk(gl.VERTEX_SHADER, VS)); gl.attachShader(this.prog, mk(gl.FRAGMENT_SHADER, FS));
-    gl.linkProgram(this.prog);
-    this.quad = gl.createBuffer()!;
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    this.prog = compileProg(gl, VS, FS);
+    this.quad = attrBuf(gl, this.prog, 'p', 2, new Float32Array([-1, -1, 3, -1, -1, 3]));
   }
 
   setEnabled(postFX: boolean): void { this.enabled = postFX; }

@@ -84,6 +84,7 @@ export class Nexa {
 }
 
 export { getDevice } from './device.js';
+export { compileProg, attrBuf, srand, palette, instanced, flat, fitCanvas, trackPointer } from './gl.js';
 export { Scheduler } from './scheduler.js';
 export { Adaptive } from './adaptive.js';
 export { ParticleField } from './particles.js';

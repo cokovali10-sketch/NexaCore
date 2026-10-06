@@ -8,15 +8,7 @@ import { Nexa } from '../src/index.js';
 export function useNexa(opts: { particles?: boolean; hud?: boolean } = {}) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
-    let alive = true;
-    if (ref.current) Nexa.boot({ canvas: ref.current, particles: opts.particles, hud: opts.hud });
-    return () => { alive = false; };
+    if (ref.current) void Nexa.boot({ canvas: ref.current, particles: opts.particles, hud: opts.hud });
   }, []);
   return ref;
-}
-
-export function NexaCanvas(props: { particles?: boolean; hud?: boolean; className?: string }) {
-  const ref = useNexa(props);
-  // @ts-ignore — без JSX-зависимости в ядре, компонент собирает юзер
-  return null as any;
 }

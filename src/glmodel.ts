@@ -6,6 +6,7 @@
 
 import { ModelManager, MeshData } from './models.js';
 import { StreamQueue } from './stream.js';
+import { compileProg } from './gl.js';
 
 const VS = `
 attribute vec3 a_p; attribute vec3 a_n;
@@ -68,11 +69,7 @@ export class GLModelLayer {
     const gl = canvas.getContext('webgl', { antialias: false, depth: true }) as WebGLRenderingContext | null;
     if (!gl) throw new Error('WebGL not supported');
     this.gl = gl;
-    const mk = (t: number, s: string) => { const o = gl.createShader(t)!; gl.shaderSource(o, s); gl.compileShader(o); return o; };
-    this.prog = gl.createProgram()!;
-    gl.attachShader(this.prog, mk(gl.VERTEX_SHADER, VS));
-    gl.attachShader(this.prog, mk(gl.FRAGMENT_SHADER, FS));
-    gl.linkProgram(this.prog);
+    this.prog = compileProg(gl, VS, FS);
     gl.enable(gl.DEPTH_TEST);
   }
 

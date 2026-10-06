@@ -2,6 +2,8 @@
 // Секрет: вся физика в типизированных массивах (Float32Array), ноль объектов в кадре,
 // рендер через WebGL POINTS, размер/цвет считаются в вершинном шейдере.
 
+import { compileProg, attrBuf, trackPointer } from './gl.js';
+
 export interface ParticleOpts {
   canvas: HTMLCanvasElement;
   count?: number;
@@ -46,11 +48,7 @@ export class ParticleField {
     this.alloc(this.count);
     this.initGL();
     if (opts.interactive !== false) {
-      addEventListener('pointermove', (e) => {
-        const r = canvas.getBoundingClientRect();
-        this.mx = ((e.clientX - r.left) / r.width) * 2 - 1;
-        this.my = -(((e.clientY - r.top) / r.height) * 2 - 1);
-      }, { passive: true });
+      trackPointer(canvas, (x, y) => { this.mx = x; this.my = y; });
     }
   }
 
@@ -88,13 +86,13 @@ export class ParticleField {
   private prog!: WebGLProgram;
   private initGL(): void {
     const gl = this.gl!;
-    const vs = gl.createShader(gl.VERTEX_SHADER)!; gl.shaderSource(vs, VS); gl.compileShader(vs);
-    const fs = gl.createShader(gl.FRAGMENT_SHADER)!; gl.shaderSource(fs, FS); gl.compileShader(fs);
-    this.prog = gl.createProgram()!; gl.attachShader(this.prog, vs); gl.attachShader(this.prog, fs); gl.linkProgram(this.prog);
+    this.prog = compileProg(gl, VS, FS);
     gl.useProgram(this.prog);
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-    this.posBuf = gl.createBuffer()!; this.sizeBuf = gl.createBuffer()!;
-    this.colBuf = gl.createBuffer()!; this.alphaBuf = gl.createBuffer()!;
+    this.posBuf = attrBuf(gl, this.prog, 'a_pos', 2, this.posArr, true);
+    this.sizeBuf = attrBuf(gl, this.prog, 'a_size', 1, this.size, true);
+    this.colBuf = attrBuf(gl, this.prog, 'a_col', 3, this.col, true);
+    this.alphaBuf = attrBuf(gl, this.prog, 'a_alpha', 1, this.alpha, true);
   }
 
   update(dt: number): void {

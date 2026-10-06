@@ -164,6 +164,24 @@ export class Scene {
     for (const e of JSON.parse(json)) this.add(e);
   }
 
+  // Готовая сцена в одну строку: hero — всё и сразу, calm — тихо, storm — максимум
+  preset(name: 'hero' | 'calm' | 'storm'): void {
+    this.clear();
+    if (name === 'calm') {
+      this.add({ type: 'particles', count: 4000, speed: 0.08 });
+      this.add({ type: 'spheres', count: 30 });
+    } else if (name === 'storm') {
+      this.add({ type: 'particles', count: 30000, speed: 0.5 });
+      this.add({ type: 'cube3d', count: 300 });
+      this.add({ type: 'voxels', count: 8000 });
+    } else {
+      this.add({ type: 'particles', count: 15000 });
+      this.add({ type: 'cube3d', count: 120 });
+      this.add({ type: 'voxels', count: 4000 });
+      this.add({ type: 'text', content: 'NEXA', x: 0.08, y: 0.2 });
+    }
+  }
+
   // Сводная статистика кадра для HUD и Profiler (stat fps)
   stats(): { fps: number; level: number; draws: number; tris: number; entities: number; modelsReady: number; modelsPending: number } {
     return {

@@ -14,8 +14,9 @@ def check(name, cond, hint=""):
 # 1. структура
 expected = ["src/index.ts","src/gpu.ts","src/postfx.ts","src/models.ts","src/textures.ts",
   "src/physics.ts","src/physics-worker.ts","src/ktx2.ts","src/basis.ts","src/decimate.ts",
-  "src/scene.ts","src/design.ts","src/migrate.ts","src/gl3d.ts","src/glmodel.ts","src/glvoxels.ts","src/profiler.ts","src/stream.ts",
-  "wasm/physics.rs","wasm/meshopt.rs","cli/nexa.js","adapters/react.ts","adapters/vue.ts","dist/nexa.js",
+  "src/scene.ts","src/design.ts","src/migrate.ts","src/gl3d.ts","src/glmodel.ts","src/glvoxels.ts","src/gl.ts","src/profiler.ts","src/stream.ts",
+  "wasm/physics.rs","wasm/meshopt.rs","cli/nexa.js","adapters/react.ts","adapters/vue.ts","dist/nexa.js","dist/nexa.min.js",
+  "tools/minify.py",
   "demo/heavy.html","demo/world.html","demo/builder.html","demo/gl3d.html","demo/showcase.html","README.md","README_RU.md","README_EN.md",
   "tests/smoke.py","bench/physics.bench.mjs"]
 for f in expected:
@@ -57,12 +58,21 @@ check("scene has postfx+queue", "PostFx" in sc and "this.fx" in sc and "StreamQu
 check("scene has voxels", "voxels" in sc and "GLVoxelField" in sc and "voxTotal" in sc)
 check("cubes have shadows", "v_h" in (ROOT/"src/gl3d.ts").read_text(encoding="utf-8"))
 pkg = (ROOT/"package.json").read_text(encoding="utf-8")
-check("package v1.0 + exports", '"1.0.0"' in pkg and '"exports"' in pkg and '"files"' in pkg)
+check("package v1.1 + exports", '"1.1.0"' in pkg and '"exports"' in pkg and '"files"' in pkg)
 check("glmodel uses queue", "StreamQueue" in (ROOT/"src/glmodel.ts").read_text(encoding="utf-8"))
 check("gl3d reports stats", "lastTris" in (ROOT/"src/gl3d.ts").read_text(encoding="utf-8"))
 check("glmodel reports stats", "lastDraws" in (ROOT/"src/glmodel.ts").read_text(encoding="utf-8"))
 cli2 = (ROOT/"cli/nexa.js").read_text(encoding="utf-8")
 check("init dual-canvas template", 'id="gl"' in cli2 and "cube3d" in cli2)
+gl = (ROOT/"src/gl.ts").read_text(encoding="utf-8")
+check("gl foundation", all(k in gl for k in ["compileProg", "attrBuf", "srand", "palette", "instanced", "trackPointer"]))
+for mod in ["gl3d.ts", "glvoxels.ts", "particles.ts", "postfx.ts", "glmodel.ts"]:
+    check(f"{mod} uses gl.ts", "from './gl.js'" in (ROOT / "src" / mod).read_text(encoding="utf-8"))
+check("scene has presets", "preset(" in sc and "'hero'" in sc and "'storm'" in sc)
+mini = ROOT / "dist" / "nexa.min.js"
+full = ROOT / "dist" / "nexa.js"
+check("min.js smaller + alive", mini.stat().st_size < full.stat().st_size
+      and "window.Nexa" in mini.read_text(encoding="utf-8"))
 
 print("\nSMOKE: " + ("ALL PASS" if ok else "FAILURES PRESENT"))
 sys.exit(0 if ok else 1)
