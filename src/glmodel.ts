@@ -5,6 +5,7 @@
 // поэтому add() мгновенный, меш появляется когда докачался.
 
 import { ModelManager, MeshData } from './models.js';
+import { StreamQueue } from './stream.js';
 
 const VS = `
 attribute vec3 a_p; attribute vec3 a_n;
@@ -62,7 +63,7 @@ export class GLModelLayer {
   models: PlacedModel[] = [];
   lastDraws = 0; lastTris = 0; // статистика для Profiler (stat fps)
 
-  constructor(private canvas: HTMLCanvasElement) {
+  constructor(private canvas: HTMLCanvasElement, private queue?: StreamQueue) {
     // тот же контекст, что у GLCubeField (один canvas — один контекст)
     const gl = canvas.getContext('webgl', { antialias: false, depth: true }) as WebGLRenderingContext | null;
     if (!gl) throw new Error('WebGL not supported');
@@ -75,17 +76,20 @@ export class GLModelLayer {
     gl.enable(gl.DEPTH_TEST);
   }
 
-  // Мгновенно возвращает плейсхолдер; меш подтянется асинхронно
+  // Мгновенно возвращает плейсхолдер; меш подтянется через очередь (ближние — первыми)
   add(id: string, url: string, x = 0.5, y = 0.5, scale = 0.8): PlacedModel {
     const m: PlacedModel = {
       id, url, x: x * 2 - 1, y: -(y * 2 - 1), depth: 4, scale,
       spin: 0.4, base: Math.random() * 6.28, lods: null, gpu: [null, null, null],
     };
     this.models.push(m);
-    this.mgr.get(url).then((lods) => {
+    const job = () => this.mgr.get(url).then((lods) => {
+      if (!this.models.some((x) => x.id === id)) return; // удалили пока грузилось
       m.lods = lods;
       lods.forEach((lod, i) => { m.gpu[i] = this.upload(lod); });
     }).catch(() => { /* битая ссылка — останется плейсхолдер */ });
+    if (this.queue) this.queue.push({ url, priority: scale, run: job });
+    else void job();
     return m;
   }
 

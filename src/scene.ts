@@ -11,6 +11,8 @@ import { getDevice } from './device.js';
 import { GLCubeField } from './gl3d.js';
 import { GLModelLayer } from './glmodel.js';
 import { Profiler } from './profiler.js';
+import { PostFx, PostFxOpts } from './postfx.js';
+import { StreamQueue } from './stream.js';
 
 export type EntityType = 'cubes' | 'spheres' | 'particles' | 'model' | 'text' | 'cube3d';
 export interface Entity {
@@ -43,11 +45,13 @@ export class Scene {
   private glBuilt = 0;
   private models: GLModelLayer | null = null;
   private glCtx: WebGLRenderingContext | null = null;
+  private fx: PostFx | null = null;
+  private queue: StreamQueue | null = null;
   private tierLabel = 'MID';
   private hud: HTMLElement | null = null;
   private frameNo = 0;
 
-  constructor(private canvas: HTMLCanvasElement, public opts: { hud?: boolean; glCanvas?: HTMLCanvasElement; profiler?: Profiler } = {}) {
+  constructor(private canvas: HTMLCanvasElement, public opts: { hud?: boolean; glCanvas?: HTMLCanvasElement; profiler?: Profiler; postfx?: PostFxOpts } = {}) {
     canvas.style.pointerEvents = 'none';
     const g = canvas.getContext('2d');
     if (!g) throw new Error('Scene needs 2d context');
@@ -129,7 +133,11 @@ export class Scene {
       this.gl = new GLCubeField({ canvas: this.opts.glCanvas, count: this.glBuilt });
     }
     const needModels = this.lives.some((l) => l.type === 'model' && l.url);
-    if (needModels && !this.models) this.models = new GLModelLayer(this.opts.glCanvas);
+    if (needModels && !this.models) {
+      if (!this.queue) this.queue = StreamQueue.forTier(getDevice().tier);
+      this.models = new GLModelLayer(this.opts.glCanvas, this.queue);
+    }
+    if (this.opts.postfx && this.glCtx && !this.fx) this.fx = new PostFx(this.opts.glCanvas, this.glCtx);
   }
 
   private modelReady(id: string): boolean {
@@ -209,18 +217,27 @@ export class Scene {
     }
     // GPU-слой: кубы — одним GLCubeField за 1 draw call, модели — слоем GLModelLayer.
     // Чистим GL-canvas один раз на кадр, дальше слои компонуются по depth buffer.
+    // С postfx — всё уходит в FBO и выходит одним fullscreen-pass (+1 draw call).
     const total3d = this.cube3dTotal();
     const hasModels = (this.models?.models.length ?? 0) > 0;
-    if (this.glCtx && (total3d > 0 || hasModels)) {
-      this.glCtx.clearColor(0, 0, 0, 0);
-      this.glCtx.clear(this.glCtx.COLOR_BUFFER_BIT | this.glCtx.DEPTH_BUFFER_BIT);
+    const drawGL = () => {
+      if (this.glCtx) {
+        this.glCtx.clearColor(0, 0, 0, 0);
+        this.glCtx.clear(this.glCtx.COLOR_BUFFER_BIT | this.glCtx.DEPTH_BUFFER_BIT);
+      }
+      if (this.gl && total3d > 0) {
+        const frac = q === 3 ? 1 : q === 2 ? 0.65 : 0.35; // adaptive LOD для 3D
+        this.gl.setQuality(Math.max(1, Math.floor(Math.min(total3d, this.glBuilt) * frac)));
+        this.gl.render(performance.now());
+      }
+      if (this.models && hasModels) this.models.render(performance.now(), q, H / Math.max(W, 1));
+    };
+    if (total3d > 0 || hasModels) {
+      if (this.fx && this.opts.postfx) {
+        this.fx.setEnabled(this.adaptive.state.postFX); // слабые — без поста (0 cost)
+        this.fx.render(drawGL, this.opts.postfx, performance.now());
+      } else drawGL();
     }
-    if (this.gl && total3d > 0) {
-      const frac = q === 3 ? 1 : q === 2 ? 0.65 : 0.35; // adaptive LOD для 3D
-      this.gl.setQuality(Math.max(1, Math.floor(Math.min(total3d, this.glBuilt) * frac)));
-      this.gl.render(performance.now());
-    }
-    if (this.models && hasModels) this.models.render(performance.now(), q, H / Math.max(W, 1));
     // без glCanvas всё уже нарисовано выше как 2D (fallback), GPU-слой не нужен
     if (this.frameNo % 10 === 0) {
       const s = this.stats();

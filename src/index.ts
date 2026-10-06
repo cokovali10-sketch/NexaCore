@@ -89,6 +89,7 @@ export { Adaptive } from './adaptive.js';
 export { ParticleField } from './particles.js';
 export { SmartLoader } from './loader.js';
 export { initGpu } from './gpu.js';
+export { PostFx } from './postfx.js';
 export { Profiler } from './profiler.js';
 export { StreamQueue } from './stream.js';
 export { ModelManager, loadGltf } from './models.js';

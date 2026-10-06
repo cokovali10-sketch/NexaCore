@@ -159,7 +159,8 @@ node cli/nexa.js scan-three ./my-site     # разбор three.js: вес + пл
 - [x] **v0.5** — GPU-инстансинг 3D (`GLCubeField`: 1 draw call, угол в шейдере, 0 CPU в кадре)
 - [x] **v0.6** — `Scene` + `GLCubeField`: сущность `cube3d` в конструкторе, adaptive LOD для 3D, 2D-fallback
 - [x] **v0.7** — настоящий glTF-рендер (`GLModelLayer`: сглаженные нормали, LOD по тиру, async-load, плейсхолдер до готовности)
-- [x] **v0.8** — профайлер видит GPU (`Scene.stats()`: draw calls + треугольники 3D в HUD/оверлее), `nexa init` даёт 2 canvas из коробки ← мы здесь
+- [x] **v0.8** — профайлер видит GPU (`Scene.stats()`: draw calls + треугольники 3D в HUD/оверлее), `nexa init` даёт 2 canvas из коробки
+- [x] **v0.9** — `PostFx` поверх сцены (FBO + 1 fullscreen pass, авто-скип на слабых), glTF грузятся через `StreamQueue` (ближние первыми) ← мы здесь
 - [ ] **v1.0** — NPM-релиз, CDN, витрина сайтов на NEXA
 - [ ] **v0.4** — `npx nexa init` + сканер three.js-проектов + автомиграция на ядро
 - [ ] **v1.0** — NPM-релиз, CDN, доки с GIF, витрина сайтов на NEXA

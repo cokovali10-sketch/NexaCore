@@ -1,6 +1,6 @@
 {
   "name": "@nexa/core",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "NEXA Core — чип против лагов мирового уровня. WebGPU, 50k частиц, glTF+LOD, WASM-физика, профайлер, CLI.",
   "type": "module",
   "main": "./src/index.ts",
