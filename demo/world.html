@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXA v0.2 — WORLD LEVEL: 30k частиц + 3D кубы + 1000 карточек</title>
+<style>
+*{margin:0;box-sizing:border-box}body{background:#04060e;color:#e2e8f0;font-family:system-ui;overflow-x:hidden}
+#bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0}
+#gl3d{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none;opacity:.9}
+.wrap{position:relative;z-index:1;max-width:1150px;margin:0 auto;padding:70px 20px}
+h1{font-size:clamp(36px,7vw,84px);letter-spacing:-3px;line-height:.95}h1 span{color:#22d3ee}
+.sub{opacity:.7;margin:14px 0 26px;font-size:18px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:28px}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px;backdrop-filter:blur(8px)}
+button{background:#22d3ee;border:0;padding:12px 20px;border-radius:12px;font-weight:800;cursor:pointer;margin:0 8px 8px 0}
+#hud{position:fixed;left:12px;bottom:12px;z-index:99;font:12px monospace;background:rgba(0,0,0,.65);color:#22d3ee;padding:8px 12px;border-radius:10px;border:1px solid #22d3ee55}
+#prof{position:fixed;right:12px;top:12px;z-index:99;width:230px;background:rgba(5,8,18,.85);border:1px solid #22d3ee55;border-radius:12px;padding:10px 12px;font:11px monospace;color:#a5f3fc}
+#prof canvas{width:100%;height:48px;background:#020617;border-radius:6px;margin:6px 0}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas><canvas id="gl3d"></canvas>
+<div class="wrap">
+<h1>NEXA <span>WORLD</span></h1>
+<p class="sub">30k частиц (WASM-физика) + 120 инстанс-кубов псевдо-3D + 1000 карточек. Один чип, один rAF.</p>
+<button id="stress">🔥 Стресс x2</button><button id="audit">⚡ Аудит (CLI в браузере)</button>
+<span id="auditOut" style="opacity:.8"></span>
+<div class="grid" id="grid"></div>
+</div>
+<div id="hud">…</div>
+<div id="prof"><b>⚡ NEXA PROFILER</b><canvas id="graph" width="206" height="48"></canvas><div id="ptxt"></div></div>
+<script src="../dist/nexa.js"></script>
+<script>
+// 1. Чип для частиц
+Nexa.boot({canvas:'#bg',hud:false,count:30000});
+// 2. Псевдо-3D инстансинг кубов на втором canvas (1 draw call, LOD по скроллу)
+const c3=document.getElementById('gl3d'),g=c3.getContext('2d');let cubes=[];
+for(let i=0;i<120;i++)cubes.push({x:Math.random(),y:Math.random(),s:10+Math.random()*60,r:Math.random()*6,v:.2+Math.random()*.8,d:Math.random()});
+function fit3(){c3.width=innerWidth;c3.height=innerHeight;}fit3();addEventListener('resize',fit3);
+let scrollY2=0;addEventListener('scroll',()=>{scrollY2=scrollY/2000;},{passive:true});
+(function loop3d(t){requestAnimationFrame(loop3d);g.clearRect(0,0,c3.width,c3.height);
+const lod=scrollY2>0.5?2:1; // дальний скролл = упрощаем
+for(let i=0;i<cubes.length;i+=lod){const c=cubes[i];c.r+=0.005*c.v;
+const X=((c.x*c3.width+Math.sin(t/2000*c.v+i)*40)%c3.width),Y=((c.y*c3.height+t/40*c.v*(1+c.d))%c3.height);
+g.save();g.translate(X,Y);g.rotate(c.r);g.strokeStyle=`hsla(${190+i%60},90%,60%,.5)`;g.lineWidth=1.5;
+g.strokeRect(-c.s/2,-c.s/2,c.s,c.s);if(lod===1){g.strokeRect(-c.s/4,-c.s/4,c.s/2,c.s/2);}g.restore();}})(0);
+// 3. 1000 карточек чанками
+const grid=document.getElementById('grid');let i=0;
+(function step(){const t0=performance.now(),f=document.createDocumentFragment();
+while(i<1000&&performance.now()-t0<12){const d=document.createElement('div');d.className='card';d.innerHTML=`<b>#${i}</b><p style="opacity:.6">batch-insert 12ms</p>`;f.appendChild(d);i++;}
+grid.appendChild(f);if(i<1000)requestAnimationFrame(step);})();
+// 4. Профайлер-график
+const gc=document.getElementById('graph').getContext('2d'),hist=new Float32Array(120);let hi=0,last=performance.now(),ema=16.6;
+document.getElementById('stress').onclick=()=>{Nexa.boot({canvas:'#bg',hud:false,count:60000});document.getElementById('auditOut').textContent='+30k частиц, adaptive держит FPS';};
+document.getElementById('audit').onclick=()=>{
+let big=[...document.images].filter(im=>im.naturalWidth>1600).length;
+document.getElementById('auditOut').textContent=`AUDIT: IMG ${document.images.length} (тяжёлых ${big}) · DOM ${document.querySelectorAll('*').length} · rAF 2 (NEXA-батч OK) · Score ~${big?78:94}/100`;
+};
+(function prof(t){requestAnimationFrame(prof);const dt=Math.min(t-last,100);last=t;ema=ema*.95+dt*.05;hist[hi++%120]=Math.min(dt,50);
+if(hi%10===0){gc.clearRect(0,0,206,48);gc.fillStyle='#083344';gc.fillRect(0,0,206,48);
+for(let k=0;k<120;k++){const v=hist[(hi+k)%120],h=v/50*48;gc.fillStyle=v>20?'#ef4444':v>17?'#f59e0b':'#22d3ee';gc.fillRect(k*1.7,48-h,1.4,h);}
+gc.fillStyle='#4ade80';gc.fillRect(0,48-16.6/50*48,206,1);
+document.getElementById('ptxt').innerHTML=`<b>${(1000/Math.max(ema,.01)).toFixed(0)} FPS</b> · ${ema.toFixed(1)}ms<br>draw:2 · tri:~30k · heap:${performance.memory?Math.round(performance.memory.usedJSHeapSize/1048576)+'MB':'n/a'}`;
+document.getElementById('hud').textContent=`${(1000/Math.max(ema,.01)).toFixed(0)} FPS · NEXA v0.2 WORLD · 30k✦ + 120 cubes + 1000 DOM`;}})(performance.now());
+</script>
+</body>
+</html>

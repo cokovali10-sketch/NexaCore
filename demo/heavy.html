@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXA Core — Heavy Demo (20k частиц + 500 карточек)</title>
+<style>
+  *{margin:0;box-sizing:border-box} body{background:#05070f;color:#e2e8f0;font-family:system-ui;overflow-x:hidden}
+  #bg{position:fixed;inset:0;width:100vw;height:100vh;z-index:0}
+  .wrap{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:60px 20px}
+  h1{font-size:clamp(32px,6vw,72px);letter-spacing:-2px} h1 span{color:#22d3ee}
+  .sub{opacity:.7;margin:12px 0 30px} .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:30px}
+  .card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px;backdrop-filter:blur(8px)}
+  #hud{position:fixed;left:12px;bottom:12px;z-index:99;font:12px monospace;background:rgba(0,0,0,.65);color:#22d3ee;padding:8px 12px;border-radius:10px;border:1px solid #22d3ee55}
+  button{background:#22d3ee;border:0;padding:12px 22px;border-radius:12px;font-weight:800;cursor:pointer;margin-right:10px}
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div class="wrap">
+  <h1>NEXA<span>CORE</span> ⚡</h1>
+  <p class="sub">Тяжелый сайт: <b id="pcount">20000</b> частиц + 500 glass-карточек + параллакс. Всё на одном ядре, 60 FPS.</p>
+  <button onclick="location.reload()">↻ Перезагрузить</button>
+  <button id="stress">🔥 Стресс x2 частиц</button>
+  <div class="grid" id="grid"></div>
+</div>
+<div id="hud">…</div>
+<script type="module">
+  // Мини-сборка ядра прямо в демо (тот же код что в src/, но без сборки)
+  const canvas = document.getElementById('bg');
+  const gl = canvas.getContext('webgl', {antialias:false});
+  const TIER = (navigator.hardwareConcurrency??4) >= 8 ? 50000 : 20000;
+  let COUNT = TIER;
+  document.getElementById('stress').onclick = () => { COUNT = Math.min(COUNT*2, 80000); alloc(COUNT); };
+  let px,py,vx,vy,sz,al,col,pos;
+  function alloc(n){ px=new Float32Array(n);py=new Float32Array(n);vx=new Float32Array(n);vy=new Float32Array(n);sz=new Float32Array(n);al=new Float32Array(n);col=new Float32Array(n*3);pos=new Float32Array(n*2);
+    for(let i=0;i<n;i++){px[i]=Math.random()*2-1;py[i]=Math.random()*2-1;const a=Math.random()*6.28,s=.02+Math.random()*.12;vx[i]=Math.cos(a)*s;vy[i]=Math.sin(a)*s;sz[i]=1+Math.random()*3;al[i]=.25+Math.random()*.75;const t=Math.random();col[i*3]=.3+t*.7;col[i*3+1]=.6+Math.random()*.4;col[i*3+2]=1;}
+    document.getElementById('pcount').textContent=n; }
+  alloc(COUNT);
+  const VS=`attribute vec2 a_pos;attribute float a_size;attribute vec3 a_col;attribute float a_alpha;varying vec3 v_col;varying float v_alpha;void main(){v_col=a_col;v_alpha=a_alpha;gl_PointSize=a_size;gl_Position=vec4(a_pos,0.,1.);}`;
+  const FS=`precision mediump float;varying vec3 v_col;varying float v_alpha;void main(){vec2 uv=gl_PointCoord-.5;float d=length(uv);if(d>.5)discard;gl_FragColor=vec4(v_col,v_alpha*smoothstep(.5,0.,d));}`;
+  function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);return o;}
+  const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(pr);gl.useProgram(pr);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
+  const bP=gl.createBuffer(),bS=gl.createBuffer(),bC=gl.createBuffer(),bA=gl.createBuffer();
+  function fit(){canvas.width=innerWidth;canvas.height=innerHeight;gl.viewport(0,0,canvas.width,canvas.height);} fit();addEventListener('resize',fit);
+  let mx=999,my=999;addEventListener('pointermove',e=>{const r=canvas.getBoundingClientRect();mx=((e.clientX-r.left)/r.width)*2-1;my=-(((e.clientY-r.top)/r.height)*2-1);},{passive:true});
+  // 500 карточек — батч-вставка чанками чтобы не лагало
+  const grid=document.getElementById('grid');let i=0;
+  (function step(){const t0=performance.now(),f=document.createDocumentFragment();
+    while(i<500&&performance.now()-t0<12){const d=document.createElement('div');d.className='card';d.innerHTML=`<b>Карточка #${i}</b><p style="opacity:.6">NEXA батчит DOM — вставка без фризов</p>`;f.appendChild(d);i++;}
+    grid.appendChild(f);if(i<500)requestAnimationFrame(step);})();
+  // Adaptive: EMA + автокачество
+  let ema=16.6,level=3,last=performance.now();const hud=document.getElementById('hud');
+  function bind(buf,loc,size,data){const l=gl.getAttribLocation(pr,loc);gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,data,gl.DYNAMIC_DRAW);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0);}
+  function loop(t){requestAnimationFrame(loop);const dtms=t-last;last=t;ema=ema*.95+Math.min(dtms,100)*.05;
+    let active=COUNT; if(ema>20)active=Math.floor(COUNT*.4); else if(ema>17)active=Math.floor(COUNT*.7);
+    const dt=Math.min((dtms)/1000,.05),damp=1-Math.min(dt*.6,.05);
+    for(let k=0;k<active;k++){const dx=px[k]-mx,dy=py[k]-my,d2=dx*dx+dy*dy;
+      if(d2<.02&&d2>.00001){const f=(.02-d2)*8*dt/Math.sqrt(d2);vx[k]+=dx*f;vy[k]+=dy*f;}
+      px[k]+=vx[k]*dt;py[k]+=vy[k]*dt;vx[k]*=damp;vy[k]*=damp;
+      if(px[k]>1)px[k]=-1;else if(px[k]<-1)px[k]=1;if(py[k]>1)py[k]=-1;else if(py[k]<-1)py[k]=1;
+      pos[k*2]=px[k];pos[k*2+1]=py[k];}
+    gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.useProgram(pr);
+    bind(bP,'a_pos',2,pos.subarray(0,active*2));bind(bS,'a_size',1,sz.subarray(0,active));bind(bC,'a_col',3,col.subarray(0,active*3));bind(bA,'a_alpha',1,al.subarray(0,active));
+    gl.drawArrays(gl.POINTS,0,active);
+    hud.textContent=`${(1000/Math.max(ema,.01)).toFixed(0)} FPS · ema ${ema.toFixed(1)}ms · ${active/1000}k✦ · NEXA v0.1`;
+  } requestAnimationFrame(loop);
+</script>
+</body>
+</html>
