@@ -100,3 +100,4 @@ export { planMigration, adoptLoop } from './migrate.js';
 export { decimate, weld } from './decimate.js';
 export { detectCompressed, pickTextureUrl } from './ktx2.js';
 export { createWorkerPhysics } from './physics-worker.js';
+export { GLCubeField } from './gl3d.js';

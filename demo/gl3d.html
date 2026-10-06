@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NEXA GL3D — настоящий 3D на GPU, 1 draw call</title>
+<style>
+*{margin:0;box-sizing:border-box}body{background:#04060e;color:#e2e8f0;font-family:system-ui;overflow:hidden}
+#gl{position:fixed;inset:0;width:100vw;height:100vh}
+.info{position:fixed;left:16px;top:14px;z-index:5;max-width:420px}
+h1{font-size:clamp(28px,5vw,56px);letter-spacing:-2px}h1 span{color:#22d3ee}
+p{opacity:.65;margin-top:8px;font-size:14px}
+#hud{position:fixed;left:16px;bottom:14px;z-index:5;font:12px monospace;background:rgba(0,0,0,.65);color:#22d3ee;padding:8px 12px;border-radius:10px;border:1px solid #22d3ee55}
+button{position:fixed;right:16px;bottom:14px;z-index:5;background:#22d3ee;border:0;padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div class="info"><h1>GL<span>3D</span></h1>
+<p>120 кубов · инстансинг · угол считает шейдер · CPU в кадре молчит. Веди мышью — параллакс. Кнопка — стресс.</p></div>
+<div id="hud">…</div>
+<button id="stress">🔥 Стресс x3</button>
+<script type="module">
+// Зеркало src/gl3d.ts без сборки: тот же шейдер, тот же принцип
+const cv=document.getElementById('gl'),gl=cv.getContext('webgl',{antialias:false});
+function fit(){cv.width=innerWidth;cv.height=innerHeight;gl.viewport(0,0,cv.width,cv.height);}fit();addEventListener('resize',fit);
+const VS=`attribute vec3 a_v;attribute vec3 a_n;attribute vec3 a_p;attribute vec3 a_c;attribute vec2 a_rr;uniform float u_time,u_aspect,u_mx,u_my;varying vec3 v_c;varying float v_d;void main(){float a=a_rr.x+u_time*a_rr.y;float ca=cos(a),sa=sin(a);vec3 v=vec3(a_v.x*ca+a_v.z*sa,a_v.y,-a_v.x*sa+a_v.z*ca);vec3 n=vec3(a_n.x*ca+a_n.z*sa,a_n.y,-a_n.x*sa+a_n.z*ca);float s=0.16;vec3 wp=vec3(v.x*s+a_p.x*1.5+u_mx*0.3*a_p.z,v.y*s+a_p.y+u_my*0.2*a_p.z,a_p.z);float f=2.4;float ndc=(wp.z-2.0)/6.0;gl_Position=vec4(wp.x*f*u_aspect,wp.y*f,(ndc*2.0-1.0)*wp.z,wp.z);vec3 L=normalize(vec3(0.5,0.8,0.6));v_d=0.35+0.65*max(dot(n,L),0.0);v_c=a_c;}`;
+const FS=`precision mediump float;varying vec3 v_c;varying float v_d;void main(){gl_FragColor=vec4(v_c*v_d,1.0);}`;
+function sh(t,s){const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(o));return o;}
+const pr=gl.createProgram();gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));gl.linkProgram(pr);gl.useProgram(pr);gl.enable(gl.DEPTH_TEST);
+const F=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]],vv=[],nn=[];
+const quad=(a,b,c,d,fn)=>{for(const p of [a,b,c,a,c,d]){vv.push(p[0]*.5,p[1]*.5,p[2]*.5);nn.push(...fn);}};
+quad([1,1,1],[1,-1,1],[1,-1,-1],[1,1,-1],F[0]);quad([-1,1,-1],[-1,-1,-1],[-1,-1,1],[-1,1,1],F[1]);
+quad([-1,1,-1],[1,1,-1],[1,1,1],[-1,1,1],F[2]);quad([-1,-1,1],[1,-1,1],[1,-1,-1],[-1,-1,-1],F[3]);
+quad([-1,1,1],[1,1,1],[1,-1,1],[-1,-1,1],F[4]);quad([1,1,-1],[-1,1,-1],[-1,-1,-1],[1,-1,-1],F[5]);
+let COUNT=120;
+const rnd=(i,s)=>{const x=Math.sin(i*78.233+s*12.9898)*43758.5453;return x-Math.floor(x);};
+function per(fn,size){const a=new Float32Array(36*COUNT*size);for(let i=0;i<COUNT;i++)for(let k=0;k<36;k++){const c=fn(i);for(let j=0;j<size;j++)a[(i*36+k)*size+j]=c[j];}return a;}
+function buf(loc,size,data){const l=gl.getAttribLocation(pr,loc),b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0);}
+function build(){
+buf('a_v',3,new Float32Array(vv));buf('a_n',3,new Float32Array(nn));
+buf('a_p',3,per(i=>[rnd(i,1)*2-1,rnd(i,2)*2-1,2.5+rnd(i,3)*5],3));
+buf('a_c',3,per(i=>{const t=rnd(i,4);return[.3+t*.7,.6+rnd(i,5)*.4,1];},3));
+buf('a_rr',2,per(i=>[rnd(i,6)*6.28,.2+rnd(i,7)*.8],2));}
+build();
+let mx=0,my=0;addEventListener('pointermove',e=>{mx=(e.clientX/innerWidth)*2-1;my=-((e.clientY/innerHeight)*2-1);},{passive:true});
+document.getElementById('stress').onclick=()=>{COUNT=360;build();};
+const hud=document.getElementById('hud');let ema=16.6,last=performance.now(),active=COUNT;
+const set=(n,v)=>{const u=gl.getUniformLocation(pr,n);if(u)gl.uniform1f(u,v);};
+(function loop(t){requestAnimationFrame(loop);const dt=Math.min(t-last,100);last=t;ema=ema*.95+dt*.05;
+active=COUNT;if(ema>20)active=Math.floor(COUNT*.35);else if(ema>17)active=Math.floor(COUNT*.65);
+gl.useProgram(pr);set('u_time',t/1000);set('u_aspect',cv.height/Math.max(cv.width,1));set('u_mx',mx*.15);set('u_my',my*.15);
+gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+gl.drawArrays(gl.TRIANGLES,0,active*36);
+hud.textContent=`${(1000/Math.max(ema,.01)).toFixed(0)} FPS · ${active} кубов · 1 draw call · NEXA v0.5`;})
+(performance.now());
+</script>
+</body>
+</html>

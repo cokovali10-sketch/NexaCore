@@ -125,6 +125,7 @@ Double-click to open (no server needed):
 
 - **`demo/heavy.html`** — basics: 20k particles, "Stress x2" button, FPS HUD.
 - **`demo/world.html`** — world level: 30k particles + 120 cubes + 1000 cards + profiler graph + audit button.
+- **`demo/gl3d.html`** — real 3D: 120 GPU cubes, 1 draw call, mouse parallax, stress button.
 
 Try it: hit "Stress" — FPS holds because the core sheds quality itself.
 
@@ -153,7 +154,8 @@ Checks: heavy images, bloated JS bundles, legacy `three.js` script tags, competi
 
 - [x] **v0.1** — core: adaptive + scheduler + particles + loader
 - [x] **v0.2** — WebGPU backend, glTF+LOD, WASM physics, profiler, CLI, CDN, adapters ← we are here
-- [x] **v0.4** — Scene builder + Design themes, decimate/weld, Basis loader, three.js migration (`migrate`), demo builder ← we are here
+- [x] **v0.4** — Scene builder + Design themes, decimate/weld, Basis loader, three.js migration (`migrate`), demo builder
+- [x] **v0.5** — GPU-instanced 3D (`GLCubeField`: 1 draw call, shader-side rotation, 0 CPU per frame) ← we are here
 - [ ] **v1.0** — NPM release, CDN, NEXA-powered showcase
 - [ ] **v0.4** — `npx nexa init` + three.js project scanner + auto-migration onto the core
 - [ ] **v1.0** — NPM release, CDN, docs with GIFs, showcase of NEXA-powered sites

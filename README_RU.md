@@ -125,6 +125,7 @@ demo/world.html  — 30k частиц + 120 псевдо-3D кубов + 1000 к
 
 - **`demo/heavy.html`** — база: 20k частиц, кнопка «Стресс x2», HUD с FPS.
 - **`demo/world.html`** — мировой уровень: 30k частиц + 120 кубов + 1000 карточек + график профайлера + кнопка «Аудит».
+- **`demo/gl3d.html`** — настоящий 3D: 120 кубов на GPU, 1 draw call, параллакс от мыши, кнопка стресса.
 
 Проверь сам: жми «Стресс» — FPS стоит, потому что ядро само режет качество.
 
@@ -153,7 +154,8 @@ node cli/nexa.js scan-three ./my-site     # разбор three.js: вес + пл
 
 - [x] **v0.1** — ядро: adaptive + scheduler + частицы + loader
 - [x] **v0.2** — WebGPU-бэкенд, glTF+LOD, WASM-физика, профайлер, CLI, CDN, адаптеры ← мы здесь
-- [x] **v0.4** — Scene-конструктор + Design-темы, decimate/weld, Basis-лоадер, three.js-миграция (`migrate`), demo-builder ← мы здесь
+- [x] **v0.4** — Scene-конструктор + Design-темы, decimate/weld, Basis-лоадер, three.js-миграция (`migrate`), demo-builder
+- [x] **v0.5** — GPU-инстансинг 3D (`GLCubeField`: 1 draw call, угол в шейдере, 0 CPU в кадре) ← мы здесь
 - [ ] **v1.0** — NPM-релиз, CDN, витрина сайтов на NEXA
 - [ ] **v0.4** — `npx nexa init` + сканер three.js-проектов + автомиграция на ядро
 - [ ] **v1.0** — NPM-релиз, CDN, доки с GIF, витрина сайтов на NEXA
